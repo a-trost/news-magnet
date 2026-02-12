@@ -1,0 +1,16 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@shared/types": "workspace:*",
+    "cheerio": "^1.0.0",
+    "fast-xml-parser": "^4.5.0",
+    "hono": "^4.6.0",
+    "playwright": "^1.49.0"
+  }
+}

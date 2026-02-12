@@ -1,0 +1,121 @@
+[
+  {
+    "key": "hn-top",
+    "name": "Hacker News - Top",
+    "type": "hackernews",
+    "config": { "feedType": "top", "maxItems": 30 },
+    "enabled": true
+  },
+  {
+    "key": "anthropic-news",
+    "name": "Anthropic News",
+    "type": "webpage",
+    "config": { "pageUrl": "https://www.anthropic.com/news" },
+    "enabled": true
+  },
+  {
+    "key": "openai-news",
+    "name": "OpenAI News",
+    "type": "rss",
+    "config": { "feedUrl": "http://openai.com/news/rss.xml" },
+    "enabled": true
+  },
+  {
+    "key": "figma-blog",
+    "name": "Figma Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://www.figma.com/blog/feed/atom.xml" },
+    "enabled": true
+  },
+  {
+    "key": "github-changelog",
+    "name": "GitHub Changelog",
+    "type": "rss",
+    "config": { "feedUrl": "https://github.blog/changelog/feed/" },
+    "enabled": true
+  },
+  {
+    "key": "react-blog",
+    "name": "React Blog",
+    "type": "webpage",
+    "config": { "pageUrl": "https://react.dev/blog" },
+    "enabled": true
+  },
+  {
+    "key": "vercel-blog",
+    "name": "Vercel Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://vercel.com/atom" },
+    "enabled": true
+  },
+  {
+    "key": "chrome-devs",
+    "name": "Chrome for Developers",
+    "type": "rss",
+    "config": { "feedUrl": "https://developer.chrome.com/static/blog/feed.xml" },
+    "enabled": true
+  },
+  {
+    "key": "nextjs-blog",
+    "name": "Next.js Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://nextjs.org/feed.xml" },
+    "enabled": true
+  },
+  {
+    "key": "cloudflare-blog",
+    "name": "Cloudflare Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://blog.cloudflare.com/rss/" },
+    "enabled": true
+  },
+  {
+    "key": "typescript-blog",
+    "name": "TypeScript Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://devblogs.microsoft.com/typescript/feed/" },
+    "enabled": true
+  },
+  {
+    "key": "astro-blog",
+    "name": "Astro Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://astro.build/rss.xml" },
+    "enabled": true
+  },
+  {
+    "key": "bun-blog",
+    "name": "Bun Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://bun.sh/rss.xml" },
+    "enabled": true
+  },
+  {
+    "key": "deno-blog",
+    "name": "Deno Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://deno.com/feed" },
+    "enabled": true
+  },
+  {
+    "key": "svelte-blog",
+    "name": "Svelte Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://svelte.dev/blog/rss.xml" },
+    "enabled": true
+  },
+  {
+    "key": "mdn-blog",
+    "name": "MDN Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://developer.mozilla.org/en-US/blog/rss.xml" },
+    "enabled": true
+  },
+  {
+    "key": "js-weekly",
+    "name": "JavaScript Weekly",
+    "type": "rss",
+    "config": { "feedUrl": "https://javascriptweekly.com/rss" },
+    "enabled": true
+  }
+]

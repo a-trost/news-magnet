@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# SQLite database
+*.db
+*.db-wal
+*.db-shm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Vite
+.vite/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+*.swp
+*.swo
+*~
+
+# Playwright (twitter fetcher)
+playwright-report/
+test-results/
+
+# Misc
+.cache/
