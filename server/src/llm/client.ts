@@ -7,7 +7,7 @@ export function getApiKey(): string {
 }
 
 export function getModel(): string {
-  return process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
+  return process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
 }
 
 export async function callClaude(prompt: string): Promise<string> {

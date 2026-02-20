@@ -117,5 +117,12 @@
     "type": "rss",
     "config": { "feedUrl": "https://javascriptweekly.com/rss" },
     "enabled": true
+  },
+  {
+    "key": "google-ai-blog",
+    "name": "Google AI Blog",
+    "type": "rss",
+    "config": { "feedUrl": "https://blog.google/technology/ai/rss/" },
+    "enabled": true
   }
 ]

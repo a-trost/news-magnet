@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS fetch_log (
   completed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS episodes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL DEFAULT '',
+  episode_number INTEGER,
+  air_date TEXT,
+  is_archived INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_articles_source_id ON articles(source_id);
 CREATE INDEX IF NOT EXISTS idx_articles_is_relevant ON articles(is_relevant);
 CREATE INDEX IF NOT EXISTS idx_articles_relevance_score ON articles(relevance_score);

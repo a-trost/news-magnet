@@ -51,7 +51,7 @@ export const hackerNewsFetcher: Fetcher = {
           external_id: String(item.id),
           title: item.title || "Untitled",
           url,
-          summary: item.text?.slice(0, 1000) || undefined,
+          summary: item.text ? stripHtml(item.text).slice(0, 1000) : undefined,
           author: item.by || undefined,
           published_at: item.time ? new Date(item.time * 1000).toISOString() : undefined,
         });
@@ -61,3 +61,19 @@ export const hackerNewsFetcher: Fetcher = {
     return articles;
   },
 };
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<p>/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}

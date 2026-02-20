@@ -41,6 +41,32 @@ export interface UpdateSourceInput {
   enabled?: boolean;
 }
 
+// Episode types
+export interface Episode {
+  id: number;
+  title: string;
+  episode_number: number | null;
+  air_date: string | null;
+  is_archived: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateEpisodeInput {
+  title?: string;
+  episode_number?: number;
+  air_date?: string;
+}
+
+export interface UpdateEpisodeInput {
+  title?: string;
+  episode_number?: number;
+  air_date?: string;
+  is_archived?: boolean;
+  notes?: string;
+}
+
 // Article types
 export interface Article {
   id: number;
@@ -58,6 +84,15 @@ export interface Article {
   filtered_at: string | null;
   is_saved: boolean;
   saved_at: string | null;
+  show_notes: string | null;
+  notes_summary: string | null;
+  notes_why: string | null;
+  notes_comedy: string | null;
+  notes_talking: string | null;
+  script: string | null;
+  processed_at: string | null;
+  display_order: number | null;
+  episode_id: number | null;
   created_at: string;
 }
 
@@ -77,9 +112,11 @@ export interface ArticleFilters {
   isSaved?: boolean;
   minScore?: number;
   search?: string;
-  sort?: "newest" | "oldest" | "score_desc" | "score_asc";
+  sort?: "newest" | "oldest" | "score_desc" | "score_asc" | "display_order";
   page?: number;
   limit?: number;
+  episodeId?: number;
+  unassigned?: boolean;
 }
 
 export interface PaginatedArticles {

@@ -38,6 +38,8 @@ import { sourcesRouter } from "./routes/sources";
 import { articlesRouter } from "./routes/articles";
 import { criteriaRouter } from "./routes/criteria";
 import { fetchRouter } from "./routes/fetch";
+import { episodesRouter } from "./routes/episodes";
+import { auth } from "./auth";
 
 console.log("ANTHROPIC_API_KEY loaded:", !!process.env.ANTHROPIC_API_KEY);
 
@@ -59,11 +61,28 @@ registerAllFetchers();
 const purged = deleteOldArticles();
 if (purged > 0) console.log(`Purged ${purged} articles older than 2 weeks`);
 
+// Auth handler — must come before the session middleware
+app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+// Session middleware — protect all /api/* except auth and health
+app.use("/api/*", async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (path.startsWith("/api/auth") || path === "/api/health") {
+    return next();
+  }
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  return next();
+});
+
 // API routes
 app.route("/api/sources", sourcesRouter);
 app.route("/api/articles", articlesRouter);
 app.route("/api/criteria", criteriaRouter);
 app.route("/api/fetch", fetchRouter);
+app.route("/api/episodes", episodesRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));

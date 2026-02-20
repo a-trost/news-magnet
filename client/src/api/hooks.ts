@@ -7,6 +7,9 @@ import type {
   UpdateSourceInput,
   PaginatedArticles,
   ArticleFilters,
+  Episode,
+  CreateEpisodeInput,
+  UpdateEpisodeInput,
   Criteria,
   CreateCriteriaInput,
   UpdateCriteriaInput,
@@ -50,7 +53,7 @@ export function useDeleteSource() {
 }
 
 // Articles
-export function useArticles(filters: ArticleFilters = {}) {
+export function useArticles(filters: ArticleFilters = {}, options?: { refetchInterval?: number | false }) {
   const params = new URLSearchParams();
   if (filters.sourceId) params.set("sourceId", String(filters.sourceId));
   if (filters.isRelevant !== undefined) params.set("isRelevant", String(filters.isRelevant));
@@ -60,11 +63,14 @@ export function useArticles(filters: ArticleFilters = {}) {
   if (filters.sort) params.set("sort", filters.sort);
   if (filters.page) params.set("page", String(filters.page));
   if (filters.limit) params.set("limit", String(filters.limit));
+  if (filters.episodeId) params.set("episodeId", String(filters.episodeId));
+  if (filters.unassigned) params.set("unassigned", "true");
 
   const qs = params.toString();
   return useQuery({
     queryKey: ["articles", filters],
     queryFn: () => api.get<PaginatedArticles>(`/articles${qs ? `?${qs}` : ""}`),
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -92,10 +98,95 @@ export function useSaveArticle() {
   });
 }
 
+export function useReorderArticles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: number[]) => api.put<any>("/articles/reorder", { orderedIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
 export function useUnsaveArticle() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.post(`/articles/${id}/unsave`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useAddArticleByUrl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => api.post<any>("/articles/add-by-url", { url }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+// Episodes
+export function useEpisodes() {
+  return useQuery({
+    queryKey: ["episodes"],
+    queryFn: () => api.get<Episode[]>("/episodes"),
+  });
+}
+
+export function useEpisode(id: number | null) {
+  return useQuery({
+    queryKey: ["episodes", id],
+    queryFn: () => api.get<Episode>(`/episodes/${id}`),
+    enabled: id !== null,
+  });
+}
+
+export function useNextEpisodeNumber() {
+  return useQuery({
+    queryKey: ["episodes", "next-number"],
+    queryFn: () => api.get<{ nextNumber: number }>("/episodes/next-number"),
+  });
+}
+
+export function useCreateEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateEpisodeInput) => api.post<Episode>("/episodes", input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["episodes"] }),
+  });
+}
+
+export function useUpdateEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: UpdateEpisodeInput & { id: number }) =>
+      api.put<Episode>(`/episodes/${id}`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["episodes"] }),
+  });
+}
+
+export function useDeleteEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/episodes/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["episodes"] });
+      qc.invalidateQueries({ queryKey: ["articles"] });
+    },
+  });
+}
+
+export function useAddArticleToEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ episodeId, articleId }: { episodeId: number; articleId: number }) =>
+      api.post(`/episodes/${episodeId}/articles/${articleId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useRemoveArticleFromEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ episodeId, articleId }: { episodeId: number; articleId: number }) =>
+      api.delete(`/episodes/${episodeId}/articles/${articleId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
   });
 }
@@ -146,10 +237,12 @@ export type SourceFetchStatus = {
 export function useFetchAllStream() {
   const qc = useQueryClient();
   const [isPending, setIsPending] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [sourceStatuses, setSourceStatuses] = useState<Map<number, SourceFetchStatus>>(new Map());
 
   const mutate = useCallback(async () => {
     setIsPending(true);
+    setIsFiltering(false);
     setSourceStatuses(new Map());
 
     try {
@@ -172,16 +265,22 @@ export function useFetchAllStream() {
         } else if (event.event === "fetch-complete") {
           qc.invalidateQueries({ queryKey: ["sources"] });
           qc.invalidateQueries({ queryKey: ["fetchLogs"] });
+        } else if (event.event === "filter-start") {
+          setIsFiltering(true);
+        } else if (event.event === "filter-done") {
+          setIsFiltering(false);
+          qc.invalidateQueries({ queryKey: ["articles"] });
         }
       }
     } catch (err: any) {
       console.error("Fetch-all stream error:", err);
     } finally {
       setIsPending(false);
+      setIsFiltering(false);
     }
   }, [qc]);
 
-  return { mutate, isPending, sourceStatuses };
+  return { mutate, isPending, isFiltering, sourceStatuses };
 }
 
 export function useFetchSource() {
@@ -208,6 +307,86 @@ export function useClearScores() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<any>("/fetch/clear-scores"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+// Show Prep
+export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking";
+
+export type ArticleProcessStatus = {
+  id: number;
+  title: string;
+  status: "pending" | "processing" | "done" | "error";
+  error?: string;
+};
+
+export function useProcessArticlesStream() {
+  const qc = useQueryClient();
+  const [isPending, setIsPending] = useState(false);
+  const [articleStatuses, setArticleStatuses] = useState<Map<number, ArticleProcessStatus>>(new Map());
+  const [totalCount, setTotalCount] = useState(0);
+
+  const mutate = useCallback(async () => {
+    setIsPending(true);
+    setArticleStatuses(new Map());
+    setTotalCount(0);
+
+    try {
+      for await (const event of streamPost("/articles/process")) {
+        if (event.event === "process-start") {
+          setTotalCount(event.data.total);
+        } else if (event.event === "article-start") {
+          const { id, title } = event.data;
+          setArticleStatuses((prev) => {
+            const next = new Map(prev);
+            next.set(id, { id, title, status: "processing" });
+            return next;
+          });
+        } else if (event.event === "article-done") {
+          const { id, title, error } = event.data;
+          setArticleStatuses((prev) => {
+            const next = new Map(prev);
+            next.set(id, {
+              id,
+              title,
+              status: error ? "error" : "done",
+              error,
+            });
+            return next;
+          });
+        } else if (event.event === "process-complete") {
+          qc.invalidateQueries({ queryKey: ["articles"] });
+        }
+      }
+    } catch (err: any) {
+      console.error("Process stream error:", err);
+    } finally {
+      setIsPending(false);
+    }
+  }, [qc]);
+
+  return { mutate, isPending, articleStatuses, totalCount };
+}
+
+export function useUpdateShowNotes() {
+  return useMutation({
+    mutationFn: ({ id, section, content }: { id: number; section: ShowNotesSection; content: string }) =>
+      api.put<any>(`/articles/${id}/show-notes`, { section, content }),
+  });
+}
+
+export function useUpdateScript() {
+  return useMutation({
+    mutationFn: ({ id, script }: { id: number; script: string }) =>
+      api.put<any>(`/articles/${id}/script`, { script }),
+  });
+}
+
+export function useReprocessArticle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<{ sections: Record<ShowNotesSection, string> }>(`/articles/${id}/reprocess`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
   });
 }

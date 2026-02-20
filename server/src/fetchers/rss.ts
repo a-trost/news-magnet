@@ -81,7 +81,7 @@ function parseAtomEntry(entry: any, baseUrl: string): RawArticle {
     external_id: entry.id || resolvedUrl || entry.title,
     title: stripCdata(typeof entry.title === "string" ? entry.title : entry.title?.["#text"] || "Untitled"),
     url: resolvedUrl,
-    summary: stripCdata(entry.summary || entry.content?.["#text"] || entry.content || "").slice(0, 1000),
+    summary: stripCdata(textOf(entry.summary) || textOf(entry.content) || "").slice(0, 1000),
     author: entry.author?.name || undefined,
     published_at: entry.published || entry.updated
       ? new Date(entry.published || entry.updated).toISOString()

@@ -17,9 +17,9 @@ fetchRouter.post("/", async (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    // Clear all existing articles so we get a fresh set
-    const cleared = getDb().run("DELETE FROM articles").changes;
-    if (cleared > 0) console.log(`[fetch-all] Cleared ${cleared} existing articles`);
+    // Purge articles older than the cutoff — keep everything else
+    const purged = articlesRepo.deleteOldArticles();
+    if (purged > 0) console.log(`[fetch-all] Purged ${purged} articles older than 2 weeks`);
 
     let totalNew = 0;
     let failedCount = 0;
@@ -67,6 +67,29 @@ fetchRouter.post("/", async (c) => {
       event: "fetch-complete",
       data: JSON.stringify({ total: sources.length, failed: failedCount, newArticles: totalNew }),
     });
+
+    // Automatically rate new articles with AI
+    if (totalNew > 0) {
+      await stream.writeSSE({
+        event: "filter-start",
+        data: JSON.stringify({ unfiltered: totalNew }),
+      });
+
+      try {
+        const result = await filterArticles();
+        console.log(`[fetch-all] Auto-filter complete: ${result.filtered} rated in ${result.batches} batches`);
+        await stream.writeSSE({
+          event: "filter-done",
+          data: JSON.stringify(result),
+        });
+      } catch (err: any) {
+        console.error("[fetch-all] Auto-filter failed:", err.message);
+        await stream.writeSSE({
+          event: "filter-done",
+          data: JSON.stringify({ filtered: 0, batches: 0, errors: [err.message] }),
+        });
+      }
+    }
   });
 });
 
