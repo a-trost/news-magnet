@@ -1,0 +1,39 @@
+# fly.toml app configuration file generated for newsroom on 2026-02-23T14:39:54-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'newsroom'
+primary_region = 'ord'
+
+[build]
+
+[env]
+  APP_URL = 'https://newsroom.fly.dev'
+  BETTER_AUTH_URL = 'https://newsroom.fly.dev'
+  DB_PATH = '/data/news.db'
+  PORT = '8080'
+
+[[mounts]]
+  source = 'data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/health'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256

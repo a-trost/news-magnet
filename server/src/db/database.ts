@@ -2,8 +2,7 @@ import { Database } from "bun:sqlite";
 import path from "path";
 import { schema } from "./schema";
 
-// Always store the DB in the project root (two levels up from server/src/db/)
-const DB_PATH = path.resolve(import.meta.dir, "../../../news.db");
+const DB_PATH = process.env.DB_PATH || path.resolve(import.meta.dir, "../../../news.db");
 
 let db: Database | null = null;
 

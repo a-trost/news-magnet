@@ -238,11 +238,13 @@ export function useFetchAllStream() {
   const qc = useQueryClient();
   const [isPending, setIsPending] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [filterErrors, setFilterErrors] = useState<string[]>([]);
   const [sourceStatuses, setSourceStatuses] = useState<Map<number, SourceFetchStatus>>(new Map());
 
   const mutate = useCallback(async () => {
     setIsPending(true);
     setIsFiltering(false);
+    setFilterErrors([]);
     setSourceStatuses(new Map());
 
     try {
@@ -269,18 +271,25 @@ export function useFetchAllStream() {
           setIsFiltering(true);
         } else if (event.event === "filter-done") {
           setIsFiltering(false);
+          const { errors } = event.data;
+          if (errors?.length) {
+            setFilterErrors(errors);
+          }
           qc.invalidateQueries({ queryKey: ["articles"] });
         }
       }
     } catch (err: any) {
       console.error("Fetch-all stream error:", err);
+      setFilterErrors([err.message || "Stream connection failed"]);
     } finally {
       setIsPending(false);
       setIsFiltering(false);
     }
   }, [qc]);
 
-  return { mutate, isPending, isFiltering, sourceStatuses };
+  const dismissFilterErrors = useCallback(() => setFilterErrors([]), []);
+
+  return { mutate, isPending, isFiltering, filterErrors, dismissFilterErrors, sourceStatuses };
 }
 
 export function useFetchSource() {

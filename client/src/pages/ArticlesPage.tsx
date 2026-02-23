@@ -138,6 +138,25 @@ export default function ArticlesPage() {
         </div>
       </div>
 
+      {fetchAll.filterErrors.length > 0 && (
+        <div className="mb-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800/50 rounded-lg p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">AI rating failed</p>
+              {fetchAll.filterErrors.map((err, i) => (
+                <p key={i} className="text-xs text-red-600 dark:text-red-400/80 font-mono">{err}</p>
+              ))}
+            </div>
+            <button
+              onClick={fetchAll.dismissFilterErrors}
+              className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 text-lg leading-none"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add by URL modal */}
       {showAddModal && (
         <div

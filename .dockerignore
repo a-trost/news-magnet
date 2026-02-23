@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-wal
+*.db-shm
+.git/
+.claude/
+fly.toml
+Dockerfile
+.dockerignore
