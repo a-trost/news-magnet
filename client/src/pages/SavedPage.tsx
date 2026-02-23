@@ -34,7 +34,12 @@ import {
 } from "../api/hooks";
 import type { ShowNotesSection } from "../api/hooks";
 import RichEditor from "../components/RichEditor";
+import CollaborativeEditor from "../components/CollaborativeEditor";
 import ShowNotesTabs from "../components/ShowNotesTabs";
+import { useCollaboration } from "../components/CollaborationContext";
+import ActiveUsers from "../components/ActiveUsers";
+import ArticlePresenceIndicator from "../components/ArticlePresenceIndicator";
+import { LiveblocksProvider, RoomProvider, useUpdateMyPresence } from "@liveblocks/react";
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-xs text-gray-400 dark:text-gray-500">Unscored</span>;
@@ -71,6 +76,132 @@ function DragHandle({ listeners, attributes }: { listeners?: Record<string, Func
   );
 }
 
+function ArticleEditorAreaInner({
+  article,
+  isCollaborative,
+  notesSaved,
+  scriptSaved,
+  isProcessing,
+  isReprocessing,
+  onReprocess,
+  handleSaveSection,
+  setNotesSaved,
+  handleSaveScript,
+  setScriptSaved,
+}: {
+  article: Article;
+  isCollaborative: boolean;
+  notesSaved: boolean;
+  scriptSaved: boolean;
+  isProcessing: boolean;
+  isReprocessing: boolean;
+  onReprocess: () => void;
+  handleSaveSection: (section: ShowNotesSection, content: string) => void;
+  setNotesSaved: (v: boolean) => void;
+  handleSaveScript: (html: string) => void;
+  setScriptSaved: (v: boolean) => void;
+}) {
+  return (
+    <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-800">
+      {/* Article meta */}
+      <div className="py-2">
+        {article.summary && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+            {article.summary}
+          </p>
+        )}
+        {article.relevance_reason && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 italic">
+            AI: {article.relevance_reason}
+          </p>
+        )}
+      </div>
+
+      {/* Two-column writing area */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Left: AI Show Notes */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Show Notes</span>
+            <div className="flex items-center gap-2">
+              {!notesSaved && (
+                <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
+              )}
+              {article.notes_summary && !isProcessing && !isReprocessing && (
+                <button
+                  onClick={onReprocess}
+                  className="text-gray-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                  title="Reprocess with AI"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M21.015 4.356v4.992" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+          {isProcessing || isReprocessing ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-500">
+              <svg className="animate-spin h-4 w-4 text-indigo-500 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Processing with AI...
+            </div>
+          ) : (
+            <ShowNotesTabs
+              articleId={article.id}
+              article={article}
+              onSaveSection={handleSaveSection}
+              onSavedStateChange={setNotesSaved}
+              isCollaborative={isCollaborative}
+            />
+          )}
+        </div>
+
+        {/* Right: Script */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Script</span>
+            {!scriptSaved && (
+              <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
+            )}
+          </div>
+          {isCollaborative ? (
+            <CollaborativeEditor
+              field="script"
+              initialContent={article.script || ""}
+              onSave={handleSaveScript}
+              onSavedStateChange={setScriptSaved}
+              placeholder="Write your script here..."
+              className="bg-gray-50 dark:bg-gray-800 flex-1"
+            />
+          ) : (
+            <RichEditor
+              content={article.script || ""}
+              onSave={handleSaveScript}
+              onSavedStateChange={setScriptSaved}
+              placeholder="Write your script here..."
+              className="bg-gray-50 dark:bg-gray-800 flex-1"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleEditorArea(props: Parameters<typeof ArticleEditorAreaInner>[0]) {
+  if (props.isCollaborative) {
+    return (
+      <RoomProvider id={`article:${props.article.id}`}>
+        <ArticleEditorAreaInner {...props} />
+      </RoomProvider>
+    );
+  }
+  return <ArticleEditorAreaInner {...props} />;
+}
+
 function SortableArticleCard({
   article,
   sourceName,
@@ -78,6 +209,7 @@ function SortableArticleCard({
   isExpanded,
   onToggle,
   onRemoveFromEpisode,
+  isCollaborative,
 }: {
   article: Article;
   sourceName?: string;
@@ -85,6 +217,7 @@ function SortableArticleCard({
   isExpanded: boolean;
   onToggle: () => void;
   onRemoveFromEpisode: (articleId: number) => void;
+  isCollaborative: boolean;
 }) {
   const {
     attributes,
@@ -146,6 +279,7 @@ function SortableArticleCard({
               {article.title}
             </span>
             <ScoreBadge score={article.relevance_score} />
+            {isCollaborative && <ArticlePresenceIndicator articleId={article.id} />}
             {isProcessing && (
               <svg className="animate-spin h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -191,80 +325,19 @@ function SortableArticleCard({
 
         {/* Expanded editor area */}
         {isExpanded && (
-          <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-800">
-            {/* Article meta */}
-            <div className="py-2">
-              {article.summary && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                  {article.summary}
-                </p>
-              )}
-              {article.relevance_reason && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 italic">
-                  AI: {article.relevance_reason}
-                </p>
-              )}
-            </div>
-
-            {/* Two-column writing area */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Left: AI Show Notes */}
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Show Notes</span>
-                  <div className="flex items-center gap-2">
-                    {!notesSaved && (
-                      <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
-                    )}
-                    {article.notes_summary && !isProcessing && !isReprocessing && (
-                      <button
-                        onClick={() => reprocessArticle.mutate(article.id)}
-                        className="text-gray-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
-                        title="Reprocess with AI"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M21.015 4.356v4.992" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {isProcessing || isReprocessing ? (
-                  <div className="flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-500">
-                    <svg className="animate-spin h-4 w-4 text-indigo-500 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Processing with AI...
-                  </div>
-                ) : (
-                  <ShowNotesTabs
-                    articleId={article.id}
-                    article={article}
-                    onSaveSection={handleSaveSection}
-                    onSavedStateChange={setNotesSaved}
-                  />
-                )}
-              </div>
-
-              {/* Right: Script */}
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Script</span>
-                  {!scriptSaved && (
-                    <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
-                  )}
-                </div>
-                <RichEditor
-                  content={article.script || ""}
-                  onSave={handleSaveScript}
-                  onSavedStateChange={setScriptSaved}
-                  placeholder="Write your script here..."
-                  className="bg-gray-50 dark:bg-gray-800 flex-1"
-                />
-              </div>
-            </div>
-          </div>
+          <ArticleEditorArea
+            article={article}
+            isCollaborative={isCollaborative}
+            notesSaved={notesSaved}
+            scriptSaved={scriptSaved}
+            isProcessing={isProcessing}
+            isReprocessing={isReprocessing}
+            onReprocess={() => reprocessArticle.mutate(article.id)}
+            handleSaveSection={handleSaveSection}
+            setNotesSaved={setNotesSaved}
+            handleSaveScript={handleSaveScript}
+            setScriptSaved={setScriptSaved}
+          />
         )}
       </div>
     </div>
@@ -333,11 +406,13 @@ function EpisodeHeader({
   onUpdate,
   onDelete,
   onToggleArchive,
+  isCollaborative,
 }: {
   episode: Episode;
   onUpdate: (data: Record<string, any>) => void;
   onDelete: () => void;
   onToggleArchive: () => void;
+  isCollaborative: boolean;
 }) {
   const [showNotes, setShowNotes] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -431,12 +506,22 @@ function EpisodeHeader({
       </div>
       {showNotes && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-          <RichEditor
-            content={episode.notes || ""}
-            onSave={handleNotesSave}
-            placeholder="Episode notes..."
-            className="bg-gray-50 dark:bg-gray-800"
-          />
+          {isCollaborative ? (
+            <CollaborativeEditor
+              field="notes"
+              initialContent={episode.notes || ""}
+              onSave={handleNotesSave}
+              placeholder="Episode notes..."
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          ) : (
+            <RichEditor
+              content={episode.notes || ""}
+              onSave={handleNotesSave}
+              placeholder="Episode notes..."
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          )}
         </div>
       )}
     </div>
@@ -547,10 +632,28 @@ function CreateEpisodePrompt({ onCreated }: { onCreated: (id: number) => void })
   );
 }
 
+function PresenceUpdater({ expandedArticleIds }: { expandedArticleIds: Set<number> }) {
+  const updateMyPresence = useUpdateMyPresence();
+  const prevRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Set activeArticleId to the most recently expanded article
+    const ids = Array.from(expandedArticleIds);
+    const activeId = ids.length > 0 ? ids[ids.length - 1] : null;
+    if (activeId !== prevRef.current) {
+      prevRef.current = activeId;
+      updateMyPresence({ activeArticleId: activeId });
+    }
+  }, [expandedArticleIds, updateMyPresence]);
+
+  return null;
+}
+
 export default function SavedPage() {
   const { episodeId: episodeIdParam } = useParams<{ episodeId?: string }>();
   const navigate = useNavigate();
   const episodeId = episodeIdParam ? Number(episodeIdParam) : null;
+  const { isCollaborative } = useCollaboration();
 
   const { data: episodes = [], isLoading: episodesLoading } = useEpisodes();
   const { data: episode } = useEpisode(episodeId);
@@ -689,17 +792,24 @@ export default function SavedPage() {
     return null; // redirect will happen via useEffect
   }
 
-  return (
+  const content = (
     <div>
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Writing Room</h1>
-        <EpisodeSelector
-          episodes={episodes}
-          currentId={episodeId}
-          onSelect={(id) => navigate(`/saved/${id}`)}
-          onCreate={handleCreateEpisode}
-        />
+        <div className="flex items-center gap-3">
+          {isCollaborative && episodeId && <ActiveUsers />}
+          <EpisodeSelector
+            episodes={episodes}
+            currentId={episodeId}
+            onSelect={(id) => navigate(`/saved/${id}`)}
+            onCreate={handleCreateEpisode}
+          />
+        </div>
       </div>
+
+      {isCollaborative && episodeId && (
+        <PresenceUpdater expandedArticleIds={expandedArticleIds} />
+      )}
 
       {episode && (
         <EpisodeHeader
@@ -707,6 +817,7 @@ export default function SavedPage() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onToggleArchive={handleToggleArchive}
+          isCollaborative={isCollaborative && !!episodeId}
         />
       )}
 
@@ -736,6 +847,7 @@ export default function SavedPage() {
                       return next;
                     })}
                     onRemoveFromEpisode={handleRemoveFromEpisode}
+                    isCollaborative={isCollaborative && !!episodeId}
                   />
                 );
               })}
@@ -783,4 +895,17 @@ export default function SavedPage() {
       )}
     </div>
   );
+
+  // Wrap with Liveblocks providers when collaborative and episode is selected
+  if (isCollaborative && episodeId) {
+    return (
+      <LiveblocksProvider authEndpoint="/api/liveblocks/auth">
+        <RoomProvider id={`episode:${episodeId}`} initialPresence={{ activeArticleId: null }}>
+          {content}
+        </RoomProvider>
+      </LiveblocksProvider>
+    );
+  }
+
+  return content;
 }

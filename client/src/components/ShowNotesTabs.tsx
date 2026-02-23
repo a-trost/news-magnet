@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import RichEditor from "./RichEditor";
+import CollaborativeEditor from "./CollaborativeEditor";
 import { useGenerateDraft } from "../api/hooks";
 import type { ShowNotesSection } from "../api/hooks";
 
@@ -43,9 +44,10 @@ interface ShowNotesTabsProps {
   };
   onSaveSection: (section: ShowNotesSection, content: string) => void;
   onSavedStateChange: (saved: boolean) => void;
+  isCollaborative?: boolean;
 }
 
-export default function ShowNotesTabs({ articleId, article, onSaveSection, onSavedStateChange }: ShowNotesTabsProps) {
+export default function ShowNotesTabs({ articleId, article, onSaveSection, onSavedStateChange, isCollaborative }: ShowNotesTabsProps) {
   const [activeTab, setActiveTab] = useState<ShowNotesSection>("notes_summary");
   const [draftContext, setDraftContext] = useState("");
   const generateDraft = useGenerateDraft();
@@ -117,17 +119,32 @@ export default function ShowNotesTabs({ articleId, article, onSaveSection, onSav
               </div>
             </div>
           )}
-          <RichEditor
-            content={article[tab.key] || ""}
-            onSave={handleSave(tab.key)}
-            onSavedStateChange={onSavedStateChange}
-            placeholder={
-              tab.key === "notes_draft"
-                ? "Click 'Generate Draft' to create a script segment from your show notes..."
-                : `${tab.label} will appear here after processing...`
-            }
-            className="bg-gray-50 dark:bg-gray-800"
-          />
+          {isCollaborative ? (
+            <CollaborativeEditor
+              field={tab.key}
+              initialContent={article[tab.key] || ""}
+              onSave={handleSave(tab.key)}
+              onSavedStateChange={onSavedStateChange}
+              placeholder={
+                tab.key === "notes_draft"
+                  ? "Click 'Generate Draft' to create a script segment from your show notes..."
+                  : `${tab.label} will appear here after processing...`
+              }
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          ) : (
+            <RichEditor
+              content={article[tab.key] || ""}
+              onSave={handleSave(tab.key)}
+              onSavedStateChange={onSavedStateChange}
+              placeholder={
+                tab.key === "notes_draft"
+                  ? "Click 'Generate Draft' to create a script segment from your show notes..."
+                  : `${tab.label} will appear here after processing...`
+              }
+              className="bg-gray-50 dark:bg-gray-800"
+            />
+          )}
           {tab.key === "notes_draft" && (() => {
             const duration = speakingTime(article.notes_draft);
             return duration ? (

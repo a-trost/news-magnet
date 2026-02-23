@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@liveblocks/react-tiptap/styles.css";
 
 /* Force class-based dark mode so .dark on <html> activates all dark: utilities */
 @custom-variant dark (&:where(.dark, .dark *));

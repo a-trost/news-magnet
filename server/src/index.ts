@@ -30,6 +30,7 @@ if (fs.existsSync(envPath)) {
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { serveStatic } from "hono/bun";
 import { getDb } from "./db/database";
 import { syncSourcesFromConfig } from "./db/sync-sources";
 import { deleteOldArticles } from "./db/repositories/articles";
@@ -40,6 +41,7 @@ import { criteriaRouter } from "./routes/criteria";
 import { fetchRouter } from "./routes/fetch";
 import { episodesRouter } from "./routes/episodes";
 import { settingsRouter } from "./routes/settings";
+import { liveblocksRouter } from "./routes/liveblocks";
 import { auth } from "./auth";
 
 console.log("ANTHROPIC_API_KEY loaded:", !!process.env.ANTHROPIC_API_KEY);
@@ -85,9 +87,20 @@ app.route("/api/criteria", criteriaRouter);
 app.route("/api/fetch", fetchRouter);
 app.route("/api/episodes", episodesRouter);
 app.route("/api/settings", settingsRouter);
+app.route("/api/liveblocks", liveblocksRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));
+
+// Serve client static files in production
+const clientDist = path.resolve(import.meta.dir, "../../client/dist");
+app.use("/*", serveStatic({ root: clientDist }));
+
+// SPA fallback — serve index.html for any non-API route not matched by static files
+app.get("*", async (c) => {
+  const html = fs.readFileSync(path.join(clientDist, "index.html"), "utf-8");
+  return c.html(html);
+});
 
 const port = Number(process.env.PORT) || 3150;
 console.log(`Server running on http://localhost:${port}`);
