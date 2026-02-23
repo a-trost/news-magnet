@@ -39,6 +39,7 @@ import { articlesRouter } from "./routes/articles";
 import { criteriaRouter } from "./routes/criteria";
 import { fetchRouter } from "./routes/fetch";
 import { episodesRouter } from "./routes/episodes";
+import { settingsRouter } from "./routes/settings";
 import { auth } from "./auth";
 
 console.log("ANTHROPIC_API_KEY loaded:", !!process.env.ANTHROPIC_API_KEY);
@@ -83,11 +84,12 @@ app.route("/api/articles", articlesRouter);
 app.route("/api/criteria", criteriaRouter);
 app.route("/api/fetch", fetchRouter);
 app.route("/api/episodes", episodesRouter);
+app.route("/api/settings", settingsRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.PORT) || 3150;
 console.log(`Server running on http://localhost:${port}`);
 
 // Wrap fetch handler to catch any errors Hono misses

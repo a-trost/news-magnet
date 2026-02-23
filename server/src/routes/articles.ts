@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import * as articlesRepo from "../db/repositories/articles";
 import { getActiveEpisodes, addArticleToEpisode } from "../db/repositories/episodes";
-import { processArticleForShow } from "../llm/show-prep";
+import { processArticleForShow, generateDraftSegment } from "../llm/show-prep";
+import { getSettingValue } from "../db/repositories/settings";
 import { fetchArticleMetadata } from "../fetchers/metadata";
 import type { ArticleFilters } from "@shared/types";
 import type { ShowNotesSection } from "../db/repositories/articles";
@@ -145,6 +146,24 @@ articlesRouter.put("/:id/script", async (c) => {
   const { script } = await c.req.json<{ script: string }>();
   articlesRepo.updateScript(id, script);
   return c.json({ data: { success: true } });
+});
+
+articlesRouter.post("/:id/generate-draft", async (c) => {
+  const id = Number(c.req.param("id"));
+  const article = articlesRepo.getArticleById(id);
+  if (!article) return c.json({ error: "Article not found" }, 404);
+  if (!article.notes_summary) return c.json({ error: "Show notes must be generated first" }, 400);
+
+  const { context } = await c.req.json<{ context?: string }>().catch(() => ({ context: undefined }));
+
+  try {
+    const voicePrompt = getSettingValue("voice_prompt") || "";
+    const html = await generateDraftSegment(article, voicePrompt, context);
+    articlesRepo.updateShowNotesSection(id, "notes_draft", html);
+    return c.json({ data: { notes_draft: html } });
+  } catch (err: any) {
+    return c.json({ error: `Draft generation failed: ${err.message}` }, 500);
+  }
 });
 
 articlesRouter.post("/:id/reprocess", async (c) => {

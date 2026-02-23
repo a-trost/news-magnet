@@ -224,7 +224,7 @@ export function updateShowNotes(id: number, sections: ProcessedShowNotes): void 
   );
 }
 
-export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking";
+export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking" | "notes_draft";
 
 export function updateShowNotesSection(id: number, section: ShowNotesSection, content: string): void {
   const allowedColumns: Record<ShowNotesSection, true> = {
@@ -232,6 +232,7 @@ export function updateShowNotesSection(id: number, section: ShowNotesSection, co
     notes_why: true,
     notes_comedy: true,
     notes_talking: true,
+    notes_draft: true,
   };
   if (!allowedColumns[section]) throw new Error(`Invalid section: ${section}`);
   getDb().run(`UPDATE articles SET ${section} = ? WHERE id = ?`, [content, id]);

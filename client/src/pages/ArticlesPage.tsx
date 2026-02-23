@@ -144,7 +144,7 @@ export default function ArticlesPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onMouseDown={(e) => { if (e.target === e.currentTarget) { setShowAddModal(false); addByUrl.reset(); setAddUrl(""); } }}
         >
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg w-full max-w-md p-5">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg shadow-gray-300/50 dark:shadow-black/50 w-full max-w-md p-5">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Add Article by URL</h2>
             <form
               onSubmit={(e) => {
@@ -295,7 +295,7 @@ export default function ArticlesPage() {
                 className={`rounded-lg px-4 py-3 border transition-colors ${
                   !article.filtered_at
                     ? "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/60 hover:border-blue-300 dark:hover:border-blue-700"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 broadcast-card"
                 }`}
               >
                 <div className="flex items-stretch gap-4">

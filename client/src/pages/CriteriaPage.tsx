@@ -52,7 +52,7 @@ export default function CriteriaPage() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 broadcast-card rounded-lg p-4 mb-4">
           <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">New Criteria</h3>
           <input
             value={newName}
@@ -105,7 +105,7 @@ export default function CriteriaPage() {
             const edit = editing[c.id];
 
             return (
-              <div key={c.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div key={c.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 broadcast-card rounded-lg p-4">
                 <div className="flex items-start justify-between mb-2">
                   {isEditing ? (
                     <input

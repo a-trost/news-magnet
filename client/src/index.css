@@ -1,41 +1,92 @@
 @import "tailwindcss";
 
+/* Force class-based dark mode so .dark on <html> activates all dark: utilities */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Typography — Barlow: industrial/technical, JetBrains Mono: broadcast data */
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  /* Remap grays → navy-tinted for broadcast dark surfaces */
+  --color-gray-50: #e4ebf2;
+  --color-gray-100: #c8d4e0;
+  --color-gray-200: #a4b8cc;
+  --color-gray-300: #8098b0;
+  --color-gray-400: #5a7590;
+  --color-gray-500: #3d566e;
+  --color-gray-600: #2a3d54;
+  --color-gray-700: #1e2d40;
+  --color-gray-800: #141e2e;
+  --color-gray-900: #0c1420;
+  --color-gray-950: #080d16;
+
+  /* Remap indigo → electric cyan for broadcast accent */
+  --color-indigo-50: #e0faff;
+  --color-indigo-100: #b3f3ff;
+  --color-indigo-200: #80ebff;
+  --color-indigo-300: #4de0ff;
+  --color-indigo-400: #22d3ee;
+  --color-indigo-500: #06b6d4;
+  --color-indigo-600: #0891b2;
+  --color-indigo-700: #0e7490;
+  --color-indigo-800: #155e75;
+  --color-indigo-900: #164e63;
+  --color-indigo-950: #083344;
+
+  /* Brighter signal colors for broadcast feel */
+  --color-emerald-400: #34d399;
+  --color-emerald-950: #052e1c;
+  --color-amber-400: #fbbf24;
+  --color-amber-950: #2a1f04;
+  --color-red-400: #f87171;
+  --color-red-950: #2a0808;
 }
 
+/* ═══════════════════════════════════════════
+   Base — light mode defaults
+   ═══════════════════════════════════════════ */
 body {
-  background-color: #fafafa;
-  color: #111;
+  background-color: #f0f4f8;
+  color: #374151;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #0a0a0f;
-    color: #e5e7eb;
-  }
+/* ═══════════════════════════════════════════
+   Base — dark mode (deep navy with grid)
+   ═══════════════════════════════════════════ */
+.dark body {
+  background-color: #080d16;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(6, 182, 212, 0.04) 0%, transparent 50%),
+    linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+  background-attachment: fixed;
+  color: #c8d4e0;
 }
 
+/* ═══════════════════════════════════════════
+   Focus states — cyan broadcast glow (dark)
+   ═══════════════════════════════════════════ */
 input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--color-indigo-400);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: var(--color-indigo-500) !important;
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.2), 0 0 8px rgba(6, 182, 212, 0.08) !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  input:focus,
-  select:focus,
-  textarea:focus {
-    border-color: var(--color-indigo-500);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-  }
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.3), 0 0 12px rgba(6, 182, 212, 0.1) !important;
 }
 
-/* Subtle scrollbar */
+/* ═══════════════════════════════════════════
+   Scrollbar
+   ═══════════════════════════════════════════ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -46,31 +97,98 @@ textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #c8d4e0;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #a4b8cc;
 }
 
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-thumb {
-    background: #374151;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #4b5563;
-  }
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e2d40;
 }
 
-/* TipTap rich editor styles */
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #2a3d54;
+}
+
+/* ═══════════════════════════════════════════
+   Signal bar — cyan accent line on nav
+   ═══════════════════════════════════════════ */
+.signal-bar {
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    #06b6d4 15%,
+    #22d3ee 50%,
+    #06b6d4 85%,
+    transparent 100%
+  );
+  opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════
+   Card hover glow — broadcast monitoring feel
+   ═══════════════════════════════════════════ */
+.broadcast-card {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.broadcast-card:hover {
+  border-color: rgba(6, 182, 212, 0.15) !important;
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.06), 0 0 12px rgba(6, 182, 212, 0.03);
+}
+
+.dark .broadcast-card:hover {
+  border-color: rgba(6, 182, 212, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1), 0 0 20px rgba(6, 182, 212, 0.04);
+}
+
+/* ═══════════════════════════════════════════
+   Signal dot — pulsing indicator
+   ═══════════════════════════════════════════ */
+@keyframes signal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.signal-dot--live {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+  animation: signal-pulse 2s ease-in-out infinite;
+}
+
+.signal-dot--active {
+  background: #06b6d4;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.4);
+}
+
+.signal-dot--idle {
+  background: #3d566e;
+}
+
+/* ═══════════════════════════════════════════
+   TipTap rich editor
+   ═══════════════════════════════════════════ */
 .rich-editor-wrapper {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #c8d4e0;
   border-radius: 0.375rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
+}
+
+.dark .rich-editor-wrapper {
+  border-color: #1e2d40;
 }
 
 .rich-editor-wrapper > div {
@@ -84,8 +202,12 @@ textarea:focus {
 }
 
 .rich-editor-wrapper:focus-within {
-  border-color: var(--color-indigo-400);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1), 0 0 8px rgba(6, 182, 212, 0.04);
+}
+
+.dark .rich-editor-wrapper:focus-within {
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.15), 0 0 12px rgba(6, 182, 212, 0.06);
 }
 
 .tiptap {
@@ -98,6 +220,10 @@ textarea:focus {
   overflow-y: auto;
 }
 
+.dark .tiptap {
+  color: #c8d4e0;
+}
+
 .tiptap:focus {
   outline: none;
 }
@@ -107,6 +233,11 @@ textarea:focus {
   font-weight: 700;
   margin: 1rem 0 0.5rem;
   line-height: 1.3;
+  color: #111827;
+}
+
+.dark .tiptap h1 {
+  color: #e4ebf2;
 }
 
 .tiptap h2 {
@@ -114,6 +245,11 @@ textarea:focus {
   font-weight: 600;
   margin: 0.875rem 0 0.375rem;
   line-height: 1.3;
+  color: #111827;
+}
+
+.dark .tiptap h2 {
+  color: #e4ebf2;
 }
 
 .tiptap h3 {
@@ -121,6 +257,11 @@ textarea:focus {
   font-weight: 600;
   margin: 0.75rem 0 0.25rem;
   line-height: 1.3;
+  color: #111827;
+}
+
+.dark .tiptap h3 {
+  color: #e4ebf2;
 }
 
 .tiptap h1:first-child,
@@ -164,28 +305,46 @@ textarea:focus {
 }
 
 .tiptap blockquote {
-  border-left: 3px solid #d1d5db;
+  border-left: 3px solid #c8d4e0;
   padding-left: 0.75rem;
   margin: 0.5rem 0;
   color: #6b7280;
   font-style: italic;
 }
 
+.dark .tiptap blockquote {
+  border-left-color: #2a3d54;
+  color: #8098b0;
+}
+
 .tiptap code {
-  background: #f3f4f6;
+  background: #e4ebf2;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.8125rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-family: var(--font-mono);
+  color: #0891b2;
+}
+
+.dark .tiptap code {
+  background: #141e2e;
+  color: #22d3ee;
 }
 
 .tiptap pre {
-  background: #1f2937;
-  color: #e5e7eb;
+  background: #e4ebf2;
+  color: #374151;
   padding: 0.75rem 1rem;
   border-radius: 0.375rem;
+  border: 1px solid #c8d4e0;
   margin: 0.5rem 0;
   overflow-x: auto;
+}
+
+.dark .tiptap pre {
+  background: #080d16;
+  color: #c8d4e0;
+  border-color: #1e2d40;
 }
 
 .tiptap pre code {
@@ -197,82 +356,64 @@ textarea:focus {
 }
 
 .tiptap a {
-  color: #6366f1;
+  color: #0891b2;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
+.dark .tiptap a {
+  color: #22d3ee;
+}
+
 .tiptap a:hover {
-  color: #4f46e5;
+  color: #06b6d4;
+}
+
+.dark .tiptap a:hover {
+  color: #4de0ff;
 }
 
 .tiptap strong {
   font-weight: 600;
+  color: #111827;
+}
+
+.dark .tiptap strong {
+  color: #e4ebf2;
 }
 
 .tiptap hr {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #c8d4e0;
   margin: 0.75rem 0;
+}
+
+.dark .tiptap hr {
+  border-top-color: #1e2d40;
 }
 
 /* Placeholder */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #9ca3af;
+  color: #a4b8cc;
   pointer-events: none;
   height: 0;
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .rich-editor-wrapper {
-    border-color: #374151;
-  }
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #3d566e;
+}
 
-  .rich-editor-wrapper:focus-within {
-    border-color: var(--color-indigo-500);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-  }
+/* ═══════════════════════════════════════════
+   Select / option styling
+   ═══════════════════════════════════════════ */
+select option {
+  background: #ffffff;
+  color: #374151;
+}
 
-  .tiptap {
-    color: #d1d5db;
-  }
-
-  .tiptap h1,
-  .tiptap h2,
-  .tiptap h3 {
-    color: #f3f4f6;
-  }
-
-  .tiptap blockquote {
-    border-left-color: #4b5563;
-    color: #9ca3af;
-  }
-
-  .tiptap code {
-    background: #1f2937;
-    color: #d1d5db;
-  }
-
-  .tiptap pre {
-    background: #111827;
-  }
-
-  .tiptap a {
-    color: #818cf8;
-  }
-
-  .tiptap a:hover {
-    color: #a5b4fc;
-  }
-
-  .tiptap hr {
-    border-top-color: #374151;
-  }
-
-  .tiptap p.is-editor-empty:first-child::before {
-    color: #6b7280;
-  }
+.dark select option {
+  background: #0c1420;
+  color: #c8d4e0;
 }

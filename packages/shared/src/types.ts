@@ -89,6 +89,7 @@ export interface Article {
   notes_why: string | null;
   notes_comedy: string | null;
   notes_talking: string | null;
+  notes_draft: string | null;
   script: string | null;
   processed_at: string | null;
   display_order: number | null;
@@ -166,6 +167,13 @@ export interface FilterResult {
   score: number;
   relevant: boolean;
   reason: string;
+}
+
+// App settings types
+export interface AppSetting {
+  key: string;
+  value: string;
+  updated_at: string;
 }
 
 // API response types

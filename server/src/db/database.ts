@@ -23,6 +23,8 @@ export function getDb(): Database {
     migrateEpisodes(db);
     migrateEpisodesArchived(db);
     migrateShowNotesSections(db);
+    migrateSettings(db);
+    migrateNotesDraft(db);
     seedDefaultCriteria(db);
   }
   return db;
@@ -207,6 +209,24 @@ function migrateShowNotesSections(db: Database) {
   });
 
   migrateAll(rows);
+}
+
+function migrateSettings(db: Database) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT
+    )
+  `);
+}
+
+function migrateNotesDraft(db: Database) {
+  const columns = db.query("PRAGMA table_info(articles)").all() as { name: string }[];
+  const hasNotesDraft = columns.some((c) => c.name === "notes_draft");
+  if (!hasNotesDraft) {
+    db.exec("ALTER TABLE articles ADD COLUMN notes_draft TEXT");
+  }
 }
 
 function seedDefaultCriteria(db: Database) {

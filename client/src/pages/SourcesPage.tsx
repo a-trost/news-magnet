@@ -51,7 +51,7 @@ function AddSourceDialog({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <form
         onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 broadcast-card rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add Source</h2>
 
@@ -234,7 +234,7 @@ export default function SourcesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sources.map((source) => (
-            <div key={source.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div key={source.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 broadcast-card rounded-lg p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="flex items-center gap-2">

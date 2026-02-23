@@ -5,5 +5,5 @@ export const auth = betterAuth({
   database: getDb(),
   basePath: "/api/auth",
   emailAndPassword: { enabled: true },
-  trustedOrigins: ["http://localhost:5174"],
+  trustedOrigins: ["http://localhost:5234"],
 });

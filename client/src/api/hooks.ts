@@ -311,8 +311,27 @@ export function useClearScores() {
   });
 }
 
+// Settings
+export function useSetting(key: string) {
+  return useQuery({
+    queryKey: ["settings", key],
+    queryFn: () => api.get<{ key: string; value: string; updated_at: string }>(`/settings/${key}`),
+  });
+}
+
+export function useUpdateSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: string }) =>
+      api.put<any>(`/settings/${key}`, { value }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["settings", variables.key] });
+    },
+  });
+}
+
 // Show Prep
-export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking";
+export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking" | "notes_draft";
 
 export type ArticleProcessStatus = {
   id: number;
@@ -380,6 +399,15 @@ export function useUpdateScript() {
   return useMutation({
     mutationFn: ({ id, script }: { id: number; script: string }) =>
       api.put<any>(`/articles/${id}/script`, { script }),
+  });
+}
+
+export function useGenerateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, context }: { id: number; context?: string }) =>
+      api.post<{ notes_draft: string }>(`/articles/${id}/generate-draft`, { context }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
   });
 }
 

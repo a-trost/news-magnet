@@ -131,6 +131,58 @@ IMPORTANT: Work with whatever information is available. If the article content i
 Keep it concise and punchy. No fluff. Write like you're briefing a busy host 30 minutes before taping.`;
 }
 
+const DEFAULT_VOICE_PROMPT = `You're a witty, conversational tech host — think someone who genuinely loves web dev but doesn't take themselves too seriously. You explain things clearly for a broad developer audience, use casual language, and drop in humor naturally without forcing it. Your tone is confident but approachable, like you're chatting with a smart friend over coffee.`;
+
+function buildDraftSegmentPrompt(article: Article, voicePrompt: string, context?: string): string {
+  const voice = voicePrompt.trim() || DEFAULT_VOICE_PROMPT;
+
+  const contextBlock = context?.trim()
+    ? `\nHOST DIRECTION:\nThe host wants this angle/take on the story: ${context.trim()}\nIncorporate this direction into the draft — it should shape the tone, framing, and emphasis.\n`
+    : "";
+
+  return `You are a show segment writer. Using the research notes below, write a first draft of a script segment the host will read on camera.
+
+VOICE / STYLE:
+${voice}
+${contextBlock}
+RHYTHM: Follow this pattern throughout the segment:
+Fact. Fact. Joke. Fact. Fact. Joke. Fact. Joke.
+The jokes should flow naturally from the facts — observational humor, analogies, or quick asides, not forced punchlines.
+
+RULES:
+- Write in first person, conversational, flowing prose
+- NO headers, bullets, or lists — just continuous paragraphs the host can read aloud
+- 200-400 words
+- Open with a hook that grabs attention
+- Close with a takeaway or call-to-action for the audience
+- Do NOT reference the show notes or source material — write as if you already know this stuff
+
+ARTICLE: ${article.title}
+URL: ${article.url}
+
+SHOW NOTES:
+
+## Summary
+${article.notes_summary || "(none)"}
+
+## Why It Matters
+${article.notes_why || "(none)"}
+
+## Comedy Angles
+${article.notes_comedy || "(none)"}
+
+## Talking Points
+${article.notes_talking || "(none)"}
+
+Write the draft segment now.`;
+}
+
+export async function generateDraftSegment(article: Article, voicePrompt: string, context?: string): Promise<string> {
+  const prompt = buildDraftSegmentPrompt(article, voicePrompt, context);
+  const markdown = await callClaude(prompt);
+  return await marked(markdown);
+}
+
 export async function processArticleForShow(article: Article): Promise<ProcessedShowNotes> {
   // Use existing raw_content if substantial, otherwise fetch via Jina Reader
   let content = article.raw_content?.trim() || "";

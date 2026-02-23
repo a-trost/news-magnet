@@ -129,7 +129,7 @@ function SortableArticleCard({
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-colors ${isExpanded ? "border-indigo-300 dark:border-indigo-700" : "hover:border-gray-300 dark:hover:border-gray-600"}`}>
+      <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all broadcast-card ${isExpanded ? "border-indigo-700 dark:border-indigo-700 shadow-[0_0_20px_rgba(6,182,212,0.06)]" : ""}`}>
         {/* Compact header — always visible */}
         <div
           className="flex items-center gap-3 px-3 py-2 cursor-pointer select-none"
@@ -239,6 +239,7 @@ function SortableArticleCard({
                   </div>
                 ) : (
                   <ShowNotesTabs
+                    articleId={article.id}
                     article={article}
                     onSaveSection={handleSaveSection}
                     onSavedStateChange={setNotesSaved}
@@ -369,7 +370,7 @@ function EpisodeHeader({
   }, []);
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 mb-4">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 mb-4 broadcast-card">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">#</span>
@@ -711,7 +712,7 @@ export default function SavedPage() {
 
       {/* Episode stories */}
       {orderedArticles.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg mb-4">
+        <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg mb-4">
           <p className="text-sm">No stories in this episode yet</p>
           <p className="text-xs mt-1">Save articles from the feed to add them here</p>
         </div>
