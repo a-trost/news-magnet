@@ -91,6 +91,7 @@ export interface Article {
   notes_talking: string | null;
   notes_draft: string | null;
   script: string | null;
+  segment_title: string | null;
   processed_at: string | null;
   display_order: number | null;
   episode_id: number | null;

@@ -43,7 +43,7 @@ export const rssFetcher: Fetcher = {
   },
 };
 
-function textOf(val: any): string {
+export function textOf(val: any): string {
   if (val == null) return "";
   if (typeof val === "string") return val;
   if (typeof val === "number") return String(val);
@@ -51,7 +51,7 @@ function textOf(val: any): string {
   return String(val);
 }
 
-function parseRssItem(item: any, baseUrl: string): RawArticle {
+export function parseRssItem(item: any, baseUrl: string): RawArticle {
   const link = textOf(item.link) || textOf(item.guid) || "";
   const resolvedUrl = resolveUrl(link, baseUrl);
   const guid = textOf(item.guid);
@@ -65,7 +65,7 @@ function parseRssItem(item: any, baseUrl: string): RawArticle {
   };
 }
 
-function parseAtomEntry(entry: any, baseUrl: string): RawArticle {
+export function parseAtomEntry(entry: any, baseUrl: string): RawArticle {
   let link = "";
   if (typeof entry.link === "string") {
     link = entry.link;
@@ -89,7 +89,7 @@ function parseAtomEntry(entry: any, baseUrl: string): RawArticle {
   };
 }
 
-function resolveUrl(url: string, base: string): string {
+export function resolveUrl(url: string, base: string): string {
   if (!url) return "";
   try {
     return new URL(url, base).href;
@@ -98,7 +98,7 @@ function resolveUrl(url: string, base: string): string {
   }
 }
 
-function stripCdata(text: string): string {
+export function stripCdata(text: string): string {
   if (typeof text !== "string") return String(text || "");
   return text
     .replace(/<!\[CDATA\[/g, "")

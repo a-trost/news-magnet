@@ -1,5 +1,9 @@
 import { Hono } from "hono";
+import TurndownService from "turndown";
 import * as episodesRepo from "../db/repositories/episodes";
+import * as articlesRepo from "../db/repositories/articles";
+
+const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 export const episodesRouter = new Hono();
 
@@ -11,6 +15,57 @@ episodesRouter.get("/", (c) => {
 episodesRouter.get("/next-number", (c) => {
   const nextNumber = episodesRepo.getNextEpisodeNumber();
   return c.json({ data: { nextNumber } });
+});
+
+episodesRouter.get("/:id/export", (c) => {
+  const id = Number(c.req.param("id"));
+  const episode = episodesRepo.getEpisodeById(id);
+  if (!episode) return c.json({ error: "Episode not found" }, 404);
+
+  const { articles } = articlesRepo.getArticles({ episodeId: id, limit: 200, sort: "display_order" });
+
+  const lines: string[] = [];
+
+  // Title
+  const titleParts = [];
+  if (episode.title) titleParts.push(episode.title);
+  if (episode.episode_number) titleParts.push(`Episode ${episode.episode_number}`);
+  lines.push(`# ${titleParts.join(" - ") || "Untitled Episode"}`);
+  lines.push("");
+
+  // Episode notes
+  if (episode.notes) {
+    lines.push(turndown.turndown(episode.notes));
+    lines.push("");
+  }
+
+  // Divider before articles
+  if (articles.length > 0) {
+    lines.push("---");
+    lines.push("");
+  }
+
+  // Each article's script
+  for (const article of articles) {
+    lines.push(`## ${article.segment_title || article.title}`);
+    lines.push("");
+    if (article.script) {
+      lines.push(turndown.turndown(article.script));
+    } else {
+      lines.push("*No script yet.*");
+    }
+    lines.push("");
+  }
+
+  const markdown = lines.join("\n");
+  const filename = `episode-${episode.episode_number ?? episode.id}.md`;
+
+  return new Response(markdown, {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 });
 
 episodesRouter.get("/:id", (c) => {

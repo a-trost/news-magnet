@@ -2,13 +2,23 @@ import { Database } from "bun:sqlite";
 import path from "path";
 import { schema } from "./schema";
 
-const DB_PATH = process.env.DB_PATH || path.resolve(import.meta.dir, "../../../news.db");
+let dbPath = process.env.DB_PATH || path.resolve(import.meta.dir, "../../../news.db");
 
 let db: Database | null = null;
 
+export function _resetForTest(customPath?: string) {
+  if (db) {
+    db.close();
+  }
+  db = null;
+  if (customPath) {
+    dbPath = customPath;
+  }
+}
+
 export function getDb(): Database {
   if (!db) {
-    db = new Database(DB_PATH, { create: true });
+    db = new Database(dbPath, { create: true });
     db.exec("PRAGMA journal_mode = WAL;");
     db.exec("PRAGMA foreign_keys = ON;");
     db.exec(schema);
@@ -24,6 +34,7 @@ export function getDb(): Database {
     migrateShowNotesSections(db);
     migrateSettings(db);
     migrateNotesDraft(db);
+    migrateSegmentTitle(db);
     seedDefaultCriteria(db);
   }
   return db;
@@ -225,6 +236,13 @@ function migrateNotesDraft(db: Database) {
   const hasNotesDraft = columns.some((c) => c.name === "notes_draft");
   if (!hasNotesDraft) {
     db.exec("ALTER TABLE articles ADD COLUMN notes_draft TEXT");
+  }
+}
+
+function migrateSegmentTitle(db: Database) {
+  const columns = db.query("PRAGMA table_info(articles)").all() as { name: string }[];
+  if (!columns.some((c) => c.name === "segment_title")) {
+    db.exec("ALTER TABLE articles ADD COLUMN segment_title TEXT");
   }
 }
 

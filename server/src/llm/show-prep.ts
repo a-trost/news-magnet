@@ -1,4 +1,4 @@
-import { callClaude } from "./client";
+import { callClaude, callClaudeWithMessages } from "./client";
 import { marked } from "marked";
 import type { Article } from "@shared/types";
 
@@ -42,7 +42,7 @@ const BLOCK_PATTERNS = [
   /security check/i,
 ];
 
-function isBlockPage(text: string): boolean {
+export function isBlockPage(text: string): boolean {
   // Check first 1000 chars — block pages are short and front-loaded with signals
   const sample = text.slice(0, 1000);
   const matches = BLOCK_PATTERNS.filter((p) => p.test(sample));
@@ -67,7 +67,7 @@ const SECTION_KEYS: { heading: string; key: keyof ProcessedShowNotes }[] = [
  * Split raw LLM markdown on `## ` headings into 4 sections.
  * Returns an object keyed by section, each value is the raw markdown for that section.
  */
-function splitMarkdownSections(markdown: string): Record<keyof ProcessedShowNotes, string> {
+export function splitMarkdownSections(markdown: string): Record<keyof ProcessedShowNotes, string> {
   const result: Record<string, string> = {
     notes_summary: "",
     notes_why: "",
@@ -180,6 +180,62 @@ Write the draft segment now.`;
 export async function generateDraftSegment(article: Article, voicePrompt: string, context?: string): Promise<string> {
   const prompt = buildDraftSegmentPrompt(article, voicePrompt, context);
   const markdown = await callClaude(prompt);
+  return await marked(markdown);
+}
+
+/**
+ * Convert HTML to plain markdown for passing to the LLM.
+ * Simple regex-based — handles the common tags TipTap produces.
+ */
+export function htmlToPlainMarkdown(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p>/gi, "\n\n")
+    .replace(/<\/?p>/gi, "")
+    .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<b>(.*?)<\/b>/gi, "**$1**")
+    .replace(/<em>(.*?)<\/em>/gi, "*$1*")
+    .replace(/<i>(.*?)<\/i>/gi, "*$1*")
+    .replace(/<a\s+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)")
+    .replace(/<li>(.*?)<\/li>/gi, "- $1\n")
+    .replace(/<\/?(ul|ol)>/gi, "\n")
+    .replace(/<h([1-6])>(.*?)<\/h\1>/gi, (_m, level, text) => "#".repeat(Number(level)) + " " + text + "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function buildRefinementSystemPrompt(voicePrompt: string): string {
+  const voice = voicePrompt.trim() || DEFAULT_VOICE_PROMPT;
+  return `You are a show segment editor. You will receive a current draft and an edit instruction. Modify ONLY what the instruction asks for — keep everything else exactly as-is. Output the full revised draft. Do not add explanations, commentary, or meta-text — just the revised draft.
+
+VOICE / STYLE:
+${voice}
+
+RULES:
+- Write in first person, conversational, flowing prose
+- NO headers, bullets, or lists — just continuous paragraphs
+- Preserve the original length unless the instruction specifically asks to expand or shorten
+- Do NOT reference the edit instruction in the output`;
+}
+
+export async function refineDraftSegment(currentDraftHtml: string, instruction: string, voicePrompt: string): Promise<string> {
+  const system = buildRefinementSystemPrompt(voicePrompt);
+  const draftMarkdown = htmlToPlainMarkdown(currentDraftHtml);
+
+  const messages = [
+    { role: "user" as const, content: "Here is my current draft:" },
+    { role: "assistant" as const, content: draftMarkdown },
+    { role: "user" as const, content: instruction },
+  ];
+
+  const markdown = await callClaudeWithMessages(system, messages);
   return await marked(markdown);
 }
 

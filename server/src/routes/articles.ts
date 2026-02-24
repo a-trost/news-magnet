@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import * as articlesRepo from "../db/repositories/articles";
 import { getActiveEpisodes, addArticleToEpisode } from "../db/repositories/episodes";
-import { processArticleForShow, generateDraftSegment } from "../llm/show-prep";
+import { processArticleForShow, generateDraftSegment, refineDraftSegment } from "../llm/show-prep";
 import { getSettingValue } from "../db/repositories/settings";
 import { fetchArticleMetadata } from "../fetchers/metadata";
 import type { ArticleFilters } from "@shared/types";
@@ -148,6 +148,13 @@ articlesRouter.put("/:id/script", async (c) => {
   return c.json({ data: { success: true } });
 });
 
+articlesRouter.put("/:id/segment-title", async (c) => {
+  const id = Number(c.req.param("id"));
+  const { segmentTitle } = await c.req.json<{ segmentTitle: string }>();
+  articlesRepo.updateSegmentTitle(id, segmentTitle);
+  return c.json({ data: { success: true } });
+});
+
 articlesRouter.post("/:id/generate-draft", async (c) => {
   const id = Number(c.req.param("id"));
   const article = articlesRepo.getArticleById(id);
@@ -163,6 +170,26 @@ articlesRouter.post("/:id/generate-draft", async (c) => {
     return c.json({ data: { notes_draft: html } });
   } catch (err: any) {
     return c.json({ error: `Draft generation failed: ${err.message}` }, 500);
+  }
+});
+
+articlesRouter.post("/:id/refine-draft", async (c) => {
+  const id = Number(c.req.param("id"));
+  const article = articlesRepo.getArticleById(id);
+  if (!article) return c.json({ error: "Article not found" }, 404);
+  if (!article.notes_draft) return c.json({ error: "No draft to refine" }, 400);
+
+  const { instruction, currentDraft } = await c.req.json<{ instruction: string; currentDraft: string }>();
+  if (!instruction?.trim()) return c.json({ error: "Instruction is required" }, 400);
+  if (!currentDraft?.trim()) return c.json({ error: "Current draft is required" }, 400);
+
+  try {
+    const voicePrompt = getSettingValue("voice_prompt") || "";
+    const html = await refineDraftSegment(currentDraft, instruction.trim(), voicePrompt);
+    articlesRepo.updateShowNotesSection(id, "notes_draft", html);
+    return c.json({ data: { notes_draft: html } });
+  } catch (err: any) {
+    return c.json({ error: `Draft refinement failed: ${err.message}` }, 500);
   }
 });
 

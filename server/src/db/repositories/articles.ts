@@ -242,6 +242,10 @@ export function updateScript(id: number, script: string): void {
   getDb().run("UPDATE articles SET script = ? WHERE id = ?", [script, id]);
 }
 
+export function updateSegmentTitle(id: number, segmentTitle: string): void {
+  getDb().run("UPDATE articles SET segment_title = ? WHERE id = ?", [segmentTitle, id]);
+}
+
 export function clearShowNotes(id: number): void {
   getDb().run(
     "UPDATE articles SET notes_summary = NULL, notes_why = NULL, notes_comedy = NULL, notes_talking = NULL, processed_at = NULL WHERE id = ?",

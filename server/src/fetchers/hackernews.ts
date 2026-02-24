@@ -62,7 +62,7 @@ export const hackerNewsFetcher: Fetcher = {
   },
 };
 
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
   return html
     .replace(/<p>/gi, " ")
     .replace(/<br\s*\/?>/gi, " ")

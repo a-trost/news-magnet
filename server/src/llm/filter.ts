@@ -6,6 +6,27 @@ import type { Article, FilterResult } from "@shared/types";
 
 const BATCH_SIZE = 20;
 
+export function normalizeFilterResult(r: FilterResult): FilterResult {
+  return {
+    id: r.id,
+    score: Math.max(0, Math.min(1, r.score)),
+    relevant: r.relevant ?? r.score >= 0.5,
+    reason: r.reason || "No reason provided",
+  };
+}
+
+export function extractJsonArray(text: string): any[] {
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) {
+    throw new Error(`No JSON array in response: ${text.slice(0, 200)}`);
+  }
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    throw new Error(`Invalid JSON in response: ${jsonMatch[0].slice(0, 200)}`);
+  }
+}
+
 export async function filterArticles(): Promise<{
   filtered: number;
   batches: number;
@@ -62,23 +83,6 @@ async function filterBatch(
 ): Promise<FilterResult[]> {
   const prompt = buildFilterPrompt(articles, criteria);
   const text = await callClaude(prompt);
-
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    throw new Error(`No JSON array in response: ${text.slice(0, 200)}`);
-  }
-
-  let results: FilterResult[];
-  try {
-    results = JSON.parse(jsonMatch[0]);
-  } catch {
-    throw new Error(`Invalid JSON in response: ${jsonMatch[0].slice(0, 200)}`);
-  }
-
-  return results.map((r) => ({
-    id: r.id,
-    score: Math.max(0, Math.min(1, r.score)),
-    relevant: r.relevant ?? r.score >= 0.5,
-    reason: r.reason || "No reason provided",
-  }));
+  const results: FilterResult[] = extractJsonArray(text);
+  return results.map(normalizeFilterResult);
 }

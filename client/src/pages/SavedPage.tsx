@@ -21,6 +21,7 @@ import {
   useSources,
   useUpdateShowNotes,
   useUpdateScript,
+  useUpdateSegmentTitle,
   useReprocessArticle,
   useReorderArticles,
   useEpisodes,
@@ -88,6 +89,7 @@ function ArticleEditorAreaInner({
   setNotesSaved,
   handleSaveScript,
   setScriptSaved,
+  onSegmentTitleChange,
 }: {
   article: Article;
   isCollaborative: boolean;
@@ -100,6 +102,7 @@ function ArticleEditorAreaInner({
   setNotesSaved: (v: boolean) => void;
   handleSaveScript: (html: string) => void;
   setScriptSaved: (v: boolean) => void;
+  onSegmentTitleChange: (value: string) => void;
 }) {
   return (
     <div className="px-4 pb-3 border-t border-gray-100 dark:border-gray-800">
@@ -161,6 +164,16 @@ function ArticleEditorAreaInner({
 
         {/* Right: Script */}
         <div className="flex flex-col">
+          <div className="mb-2">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Segment Title</span>
+            <input
+              type="text"
+              defaultValue={article.segment_title || ""}
+              onChange={(e) => onSegmentTitleChange(e.target.value)}
+              placeholder={article.title}
+              className="mt-1 w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2.5 py-1.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+            />
+          </div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Script</span>
             {!scriptSaved && (
@@ -230,10 +243,12 @@ function SortableArticleCard({
 
   const updateShowNotes = useUpdateShowNotes();
   const updateScript = useUpdateScript();
+  const updateSegmentTitle = useUpdateSegmentTitle();
   const reprocessArticle = useReprocessArticle();
 
   const [notesSaved, setNotesSaved] = useState(true);
   const [scriptSaved, setScriptSaved] = useState(true);
+  const segmentTitleDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   const handleSaveSection = useCallback(
     (section: ShowNotesSection, content: string) => {
@@ -247,6 +262,16 @@ function SortableArticleCard({
       updateScript.mutate({ id: article.id, script: html });
     },
     [article.id, updateScript]
+  );
+
+  const handleSegmentTitleChange = useCallback(
+    (value: string) => {
+      if (segmentTitleDebounce.current) clearTimeout(segmentTitleDebounce.current);
+      segmentTitleDebounce.current = setTimeout(() => {
+        updateSegmentTitle.mutate({ id: article.id, segmentTitle: value });
+      }, 500);
+    },
+    [article.id, updateSegmentTitle]
   );
 
   const isProcessing = !article.processed_at && !article.notes_summary;
@@ -337,6 +362,7 @@ function SortableArticleCard({
             setNotesSaved={setNotesSaved}
             handleSaveScript={handleSaveScript}
             setScriptSaved={setScriptSaved}
+            onSegmentTitleChange={handleSegmentTitleChange}
           />
         )}
       </div>
@@ -490,6 +516,18 @@ function EpisodeHeader({
           Episode Notes
         </button>
         <div className="ml-auto flex items-center gap-2">
+          <a
+            href={`/api/episodes/${episode.id}/export`}
+            download
+            className="text-xs px-2.5 py-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-1"
+            title="Export as Markdown"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+              <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+              <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+            </svg>
+            Export
+          </a>
           <button
             onClick={onToggleArchive}
             className="text-xs px-2.5 py-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

@@ -2,16 +2,15 @@ import * as cheerio from "cheerio";
 import type { Fetcher } from "./base";
 import type { RawArticle, Source, WebpageConfig } from "@shared/types";
 import { callClaude } from "../llm/client";
+import { BROWSER_HEADERS } from "./metadata";
 
 export const webpageFetcher: Fetcher = {
   type: "webpage",
   async fetch(source: Source): Promise<RawArticle[]> {
     const config = source.config as WebpageConfig;
     const response = await fetch(config.pageUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
+      headers: BROWSER_HEADERS,
+      redirect: "follow",
     });
     if (!response.ok) {
       throw new Error(`Failed to fetch page: ${response.status} ${response.statusText}`);

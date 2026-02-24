@@ -411,11 +411,27 @@ export function useUpdateScript() {
   });
 }
 
+export function useUpdateSegmentTitle() {
+  return useMutation({
+    mutationFn: ({ id, segmentTitle }: { id: number; segmentTitle: string }) =>
+      api.put<any>(`/articles/${id}/segment-title`, { segmentTitle }),
+  });
+}
+
 export function useGenerateDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, context }: { id: number; context?: string }) =>
       api.post<{ notes_draft: string }>(`/articles/${id}/generate-draft`, { context }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useRefineDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, instruction, currentDraft }: { id: number; instruction: string; currentDraft: string }) =>
+      api.post<{ notes_draft: string }>(`/articles/${id}/refine-draft`, { instruction, currentDraft }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
   });
 }

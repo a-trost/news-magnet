@@ -42,7 +42,7 @@ export default function CollaborativeEditor({
     extensions: [
       liveblocks,
       StarterKit.configure({
-        history: false, // Liveblocks handles undo/redo via Yjs
+        undoRedo: false, // Liveblocks handles undo/redo via Yjs
         link: { autolink: true, openOnClick: false },
       }),
       Placeholder.configure({ placeholder: placeholder ?? "Start writing..." }),
