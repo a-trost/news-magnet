@@ -64,10 +64,10 @@ export function getArticles(filters: ArticleFilters = {}): PaginatedArticles {
   const join = "LEFT JOIN episodes e ON a.episode_id = e.id";
 
   const sortMap: Record<string, string> = {
-    newest: "a.filtered_at IS NOT NULL, a.published_at DESC NULLS LAST, a.created_at DESC",
-    oldest: "a.filtered_at IS NOT NULL, a.published_at ASC NULLS LAST, a.created_at ASC",
-    score_desc: "a.filtered_at IS NOT NULL, a.relevance_score DESC NULLS LAST, a.created_at DESC",
-    score_asc: "a.filtered_at IS NOT NULL, a.relevance_score ASC NULLS LAST, a.created_at ASC",
+    newest: "a.filtered_at IS NOT NULL, a.is_saved DESC, a.published_at DESC NULLS LAST, a.created_at DESC",
+    oldest: "a.filtered_at IS NOT NULL, a.is_saved DESC, a.published_at ASC NULLS LAST, a.created_at ASC",
+    score_desc: "a.filtered_at IS NOT NULL, a.is_saved DESC, a.relevance_score DESC NULLS LAST, a.created_at DESC",
+    score_asc: "a.filtered_at IS NOT NULL, a.is_saved DESC, a.relevance_score ASC NULLS LAST, a.created_at ASC",
     display_order: "a.display_order ASC NULLS LAST, a.created_at DESC",
   };
   const orderBy = sortMap[sort] || sortMap.newest;
@@ -219,18 +219,19 @@ export function getUnprocessedSavedArticles(): Article[] {
 
 export function updateShowNotes(id: number, sections: ProcessedShowNotes): void {
   getDb().run(
-    "UPDATE articles SET notes_summary = ?, notes_why = ?, notes_comedy = ?, notes_talking = ?, processed_at = datetime('now') WHERE id = ?",
-    [sections.notes_summary, sections.notes_why, sections.notes_comedy, sections.notes_talking, id]
+    "UPDATE articles SET notes_summary = ?, notes_why = ?, notes_comedy = ?, notes_skit = ?, notes_talking = ?, notes_draft = ?, processed_at = datetime('now') WHERE id = ?",
+    [sections.notes_summary, sections.notes_why, sections.notes_comedy, sections.notes_skit, sections.notes_talking, sections.notes_draft, id]
   );
 }
 
-export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking" | "notes_draft";
+export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_skit" | "notes_talking" | "notes_draft";
 
 export function updateShowNotesSection(id: number, section: ShowNotesSection, content: string): void {
   const allowedColumns: Record<ShowNotesSection, true> = {
     notes_summary: true,
     notes_why: true,
     notes_comedy: true,
+    notes_skit: true,
     notes_talking: true,
     notes_draft: true,
   };
@@ -246,9 +247,13 @@ export function updateSegmentTitle(id: number, segmentTitle: string): void {
   getDb().run("UPDATE articles SET segment_title = ? WHERE id = ?", [segmentTitle, id]);
 }
 
+export function markProcessed(id: number): void {
+  getDb().run("UPDATE articles SET processed_at = datetime('now') WHERE id = ?", [id]);
+}
+
 export function clearShowNotes(id: number): void {
   getDb().run(
-    "UPDATE articles SET notes_summary = NULL, notes_why = NULL, notes_comedy = NULL, notes_talking = NULL, processed_at = NULL WHERE id = ?",
+    "UPDATE articles SET notes_summary = NULL, notes_why = NULL, notes_comedy = NULL, notes_skit = NULL, notes_talking = NULL, processed_at = NULL WHERE id = ?",
     [id]
   );
 }

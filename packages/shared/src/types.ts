@@ -88,6 +88,7 @@ export interface Article {
   notes_summary: string | null;
   notes_why: string | null;
   notes_comedy: string | null;
+  notes_skit: string | null;
   notes_talking: string | null;
   notes_draft: string | null;
   script: string | null;

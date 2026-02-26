@@ -35,6 +35,7 @@ export function getDb(): Database {
     migrateSettings(db);
     migrateNotesDraft(db);
     migrateSegmentTitle(db);
+    migrateNotesSkit(db);
     seedDefaultCriteria(db);
   }
   return db;
@@ -243,6 +244,13 @@ function migrateSegmentTitle(db: Database) {
   const columns = db.query("PRAGMA table_info(articles)").all() as { name: string }[];
   if (!columns.some((c) => c.name === "segment_title")) {
     db.exec("ALTER TABLE articles ADD COLUMN segment_title TEXT");
+  }
+}
+
+function migrateNotesSkit(db: Database) {
+  const columns = db.query("PRAGMA table_info(articles)").all() as { name: string }[];
+  if (!columns.some((c) => c.name === "notes_skit")) {
+    db.exec("ALTER TABLE articles ADD COLUMN notes_skit TEXT");
   }
 }
 

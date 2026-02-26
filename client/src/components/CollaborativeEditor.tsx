@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
+import { MoveLines } from "../lib/tiptap-move-lines";
 import { useLiveblocksExtension, useIsEditorReady } from "@liveblocks/react-tiptap";
 
 interface CollaborativeEditorProps {
@@ -47,6 +48,7 @@ export default function CollaborativeEditor({
       }),
       Placeholder.configure({ placeholder: placeholder ?? "Start writing..." }),
       Typography,
+      MoveLines,
     ],
     editable: true,
     onUpdate: ({ editor }) => {

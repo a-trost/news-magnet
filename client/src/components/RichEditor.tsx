@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
+import { MoveLines } from "../lib/tiptap-move-lines";
 
 interface RichEditorProps {
   content: string;
@@ -40,6 +41,7 @@ export default function RichEditor({
       }),
       Placeholder.configure({ placeholder: placeholder ?? "Start writing..." }),
       Typography,
+      MoveLines,
     ],
     content,
     editable,

@@ -53,13 +53,16 @@ export interface ProcessedShowNotes {
   notes_summary: string;
   notes_why: string;
   notes_comedy: string;
+  notes_skit: string;
   notes_talking: string;
+  notes_draft: string;
 }
 
 const SECTION_KEYS: { heading: string; key: keyof ProcessedShowNotes }[] = [
   { heading: "Summary", key: "notes_summary" },
   { heading: "Why It Matters", key: "notes_why" },
   { heading: "Comedy Angles", key: "notes_comedy" },
+  { heading: "Skit Ideas", key: "notes_skit" },
   { heading: "Talking Points", key: "notes_talking" },
 ];
 
@@ -72,6 +75,7 @@ export function splitMarkdownSections(markdown: string): Record<keyof ProcessedS
     notes_summary: "",
     notes_why: "",
     notes_comedy: "",
+    notes_skit: "",
     notes_talking: "",
   };
 
@@ -121,7 +125,10 @@ Write show notes in markdown with these sections:
 Why should a web developer audience care? What's the bigger picture? 1-2 short paragraphs.
 
 ## Comedy Angles
-3-4 bullet points with comedic observations, analogies, or bits the host could riff on. Think witty, not cringey — the audience is technical and smart.
+8 bullet points with comedic observations, analogies, or bits the host could riff on. Think witty, not cringey — the audience is technical and smart.
+
+## Skit Ideas
+8 short skit concepts (1-2 sentences each) in the style of SNL sketches or Ryan George's "Pitch Meeting" — funny, visual ways to demonstrate, illustrate, or exaggerate something true or absurd about this story. Each skit should get to the heart of the story or highlight an absurd angle. Think: "what would make someone laugh AND understand this better?"
 
 ## Talking Points
 4-6 bullet points the host can use as a guide when discussing on camera. Include any key stats, quotes, or context worth mentioning.
@@ -170,6 +177,9 @@ ${article.notes_why || "(none)"}
 
 ## Comedy Angles
 ${article.notes_comedy || "(none)"}
+
+## Skit Ideas
+${article.notes_skit || "(none)"}
 
 ## Talking Points
 ${article.notes_talking || "(none)"}
@@ -225,6 +235,33 @@ RULES:
 - Do NOT reference the edit instruction in the output`;
 }
 
+export async function refineShowNotesSection(article: Article, currentHtml: string, instruction: string, sectionLabel: string): Promise<string> {
+  const summaryMarkdown = article.notes_summary ? htmlToPlainMarkdown(article.notes_summary) : "";
+
+  const system = `You are a show prep editor for an edutainment web development show. You will receive a "${sectionLabel}" section from show notes and an edit instruction. Modify ONLY what the instruction asks for — keep everything else exactly as-is. Output the full revised section. Do not add explanations, commentary, or meta-text — just the revised content.
+
+ARTICLE CONTEXT:
+Title: ${article.title}
+URL: ${article.url}
+${summaryMarkdown ? `Summary: ${summaryMarkdown}` : ""}
+
+RULES:
+- Preserve the original format (bullets, paragraphs, etc.) unless the instruction specifically asks to change it
+- Keep the same level of detail unless told otherwise
+- Do NOT reference the edit instruction in the output`;
+
+  const contentMarkdown = htmlToPlainMarkdown(currentHtml);
+
+  const messages = [
+    { role: "user" as const, content: `Here is the current "${sectionLabel}" section:` },
+    { role: "assistant" as const, content: contentMarkdown },
+    { role: "user" as const, content: instruction },
+  ];
+
+  const markdown = await callClaudeWithMessages(system, messages);
+  return await marked(markdown);
+}
+
 export async function refineDraftSegment(currentDraftHtml: string, instruction: string, voicePrompt: string): Promise<string> {
   const system = buildRefinementSystemPrompt(voicePrompt);
   const draftMarkdown = htmlToPlainMarkdown(currentDraftHtml);
@@ -239,7 +276,21 @@ export async function refineDraftSegment(currentDraftHtml: string, instruction: 
   return await marked(markdown);
 }
 
-export async function processArticleForShow(article: Article): Promise<ProcessedShowNotes> {
+export async function refineScript(currentScriptHtml: string, instruction: string, voicePrompt: string): Promise<string> {
+  const system = buildRefinementSystemPrompt(voicePrompt);
+  const scriptMarkdown = htmlToPlainMarkdown(currentScriptHtml);
+
+  const messages = [
+    { role: "user" as const, content: "Here is my current script:" },
+    { role: "assistant" as const, content: scriptMarkdown },
+    { role: "user" as const, content: instruction },
+  ];
+
+  const markdown = await callClaudeWithMessages(system, messages);
+  return await marked(markdown);
+}
+
+export async function processArticleForShow(article: Article, voicePrompt: string = ""): Promise<ProcessedShowNotes> {
   // Use existing raw_content if substantial, otherwise fetch via Jina Reader
   let content = article.raw_content?.trim() || "";
   if (content.length < 500) {
@@ -253,10 +304,15 @@ export async function processArticleForShow(article: Article): Promise<Processed
   const sections = splitMarkdownSections(markdown);
 
   // Convert each section's markdown to HTML independently
-  return {
-    notes_summary: await marked(sections.notes_summary),
-    notes_why: await marked(sections.notes_why),
-    notes_comedy: await marked(sections.notes_comedy),
-    notes_talking: await marked(sections.notes_talking),
-  };
+  const notes_summary = await marked(sections.notes_summary);
+  const notes_why = await marked(sections.notes_why);
+  const notes_comedy = await marked(sections.notes_comedy);
+  const notes_skit = await marked(sections.notes_skit);
+  const notes_talking = await marked(sections.notes_talking);
+
+  // Generate draft segment using the completed show notes
+  const articleWithNotes = { ...article, notes_summary, notes_why, notes_comedy, notes_skit, notes_talking };
+  const notes_draft = await generateDraftSegment(articleWithNotes, voicePrompt);
+
+  return { notes_summary, notes_why, notes_comedy, notes_skit, notes_talking, notes_draft };
 }

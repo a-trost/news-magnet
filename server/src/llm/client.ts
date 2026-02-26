@@ -29,6 +29,7 @@ export async function callClaudeWithMessages(system: string, messages: ClaudeMes
       system,
       messages,
     }),
+    signal: AbortSignal.timeout(90_000),
   });
 
   const body = await res.text();
@@ -60,6 +61,7 @@ export async function callClaude(prompt: string): Promise<string> {
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     }),
+    signal: AbortSignal.timeout(90_000),
   });
 
   const body = await res.text();

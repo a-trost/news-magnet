@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import RichEditor from "./RichEditor";
 import CollaborativeEditor from "./CollaborativeEditor";
-import { useGenerateDraft, useRefineDraft } from "../api/hooks";
+import { useGenerateDraft, useRefineDraft, useRefineSection } from "../api/hooks";
 import type { ShowNotesSection } from "../api/hooks";
 
 /** ~150 wpm for conversational on-camera delivery */
@@ -29,9 +29,19 @@ const TABS: Tab[] = [
   { key: "notes_summary", label: "Summary" },
   { key: "notes_why", label: "Why It Matters" },
   { key: "notes_comedy", label: "Comedy Angles" },
+  { key: "notes_skit", label: "Skit Ideas" },
   { key: "notes_talking", label: "Talking Points" },
   { key: "notes_draft", label: "Draft" },
 ];
+
+/** Sections that get the refinement chat (everything except draft, which has its own UI) */
+const REFINABLE_SECTIONS = new Set<ShowNotesSection>([
+  "notes_summary",
+  "notes_why",
+  "notes_comedy",
+  "notes_skit",
+  "notes_talking",
+]);
 
 type ChatEntry = { role: "user" | "status"; content: string };
 
@@ -41,6 +51,7 @@ interface ShowNotesTabsProps {
     notes_summary: string | null;
     notes_why: string | null;
     notes_comedy: string | null;
+    notes_skit: string | null;
     notes_talking: string | null;
     notes_draft: string | null;
   };
@@ -58,89 +69,143 @@ const Spinner = () => (
 
 export default function ShowNotesTabs({ articleId, article, onSaveSection, onSavedStateChange, isCollaborative }: ShowNotesTabsProps) {
   const [activeTab, setActiveTab] = useState<ShowNotesSection>("notes_summary");
-  const [draftContext, setDraftContext] = useState("");
-  const [refineInput, setRefineInput] = useState("");
-  const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Per-section refinement state
+  const [sectionInputs, setSectionInputs] = useState<Record<string, string>>({});
+  const [sectionChats, setSectionChats] = useState<Record<string, ChatEntry[]>>({});
+  const sectionContentRefs = useRef<Record<string, string>>({});
+
+  // Draft-specific state
+  const [draftInput, setDraftInput] = useState("");
+  const [draftChat, setDraftChat] = useState<ChatEntry[]>([]);
   const currentDraftRef = useRef<string>(article.notes_draft || "");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const sectionChatEndRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const generateDraft = useGenerateDraft();
   const refineDraft = useRefineDraft();
+  const refineSection = useRefineSection();
 
-  // Keep currentDraftRef in sync with external article changes
+  // Keep refs in sync with external article changes
   useEffect(() => {
     if (article.notes_draft) {
       currentDraftRef.current = article.notes_draft;
     }
   }, [article.notes_draft]);
 
-  // Auto-scroll chat history
+  useEffect(() => {
+    for (const tab of TABS) {
+      if (REFINABLE_SECTIONS.has(tab.key) && article[tab.key]) {
+        sectionContentRefs.current[tab.key] = article[tab.key]!;
+      }
+    }
+  }, [article.notes_summary, article.notes_why, article.notes_comedy, article.notes_skit, article.notes_talking]);
+
+  // Auto-scroll draft chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+  }, [draftChat]);
+
+  // Auto-scroll section chats
+  useEffect(() => {
+    const activeRef = sectionChatEndRefs.current[activeTab];
+    activeRef?.scrollIntoView({ behavior: "smooth" });
+  }, [sectionChats, activeTab]);
 
   const handleSave = useCallback(
     (section: ShowNotesSection) => (html: string) => {
       onSaveSection(section, html);
       if (section === "notes_draft") {
         currentDraftRef.current = html;
+      } else if (REFINABLE_SECTIONS.has(section)) {
+        sectionContentRefs.current[section] = html;
       }
     },
     [onSaveSection],
   );
 
-  const handleGenerate = useCallback(() => {
-    setChatHistory([]);
-    generateDraft.mutate(
-      { id: articleId, context: draftContext.trim() || undefined },
-      {
-        onSuccess: () => {
-          setDraftContext("");
-        },
-      },
-    );
-  }, [articleId, draftContext, generateDraft]);
-
-  const handleRefine = useCallback(() => {
-    const instruction = refineInput.trim();
+  // --- Draft refinement ---
+  const handleDraftRefine = useCallback(() => {
+    const instruction = draftInput.trim();
     if (!instruction) return;
 
-    setChatHistory((prev) => [...prev, { role: "user", content: instruction }]);
-    setRefineInput("");
+    setDraftChat((prev) => [...prev, { role: "user", content: instruction }]);
+    setDraftInput("");
 
     refineDraft.mutate(
       { id: articleId, instruction, currentDraft: currentDraftRef.current },
       {
         onSuccess: () => {
-          setChatHistory((prev) => [...prev, { role: "status", content: "Draft updated" }]);
+          setDraftChat((prev) => [...prev, { role: "status", content: "Draft updated" }]);
         },
         onError: (err) => {
-          setChatHistory((prev) => [
+          setDraftChat((prev) => [
             ...prev,
             { role: "status", content: `Error: ${(err as Error).message}` },
           ]);
         },
       },
     );
-  }, [articleId, refineInput, refineDraft]);
+  }, [articleId, draftInput, refineDraft]);
 
-  const handleRefineKeyDown = useCallback(
+  const handleDraftKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleRefine();
+        handleDraftRefine();
       }
     },
-    [handleRefine],
+    [handleDraftRefine],
   );
 
   const handleRegenerate = useCallback(() => {
-    setChatHistory([]);
-    setDraftContext("");
+    setDraftChat([]);
     generateDraft.mutate({ id: articleId });
   }, [articleId, generateDraft]);
 
-  const isPending = generateDraft.isPending || refineDraft.isPending;
+  // --- Section refinement ---
+  const handleSectionRefine = useCallback((section: ShowNotesSection) => {
+    const instruction = (sectionInputs[section] || "").trim();
+    if (!instruction) return;
+    const currentContent = sectionContentRefs.current[section] || "";
+    if (!currentContent) return;
+
+    setSectionChats((prev) => ({
+      ...prev,
+      [section]: [...(prev[section] || []), { role: "user" as const, content: instruction }],
+    }));
+    setSectionInputs((prev) => ({ ...prev, [section]: "" }));
+
+    refineSection.mutate(
+      { id: articleId, section, instruction, currentContent },
+      {
+        onSuccess: () => {
+          setSectionChats((prev) => ({
+            ...prev,
+            [section]: [...(prev[section] || []), { role: "status" as const, content: "Updated" }],
+          }));
+        },
+        onError: (err) => {
+          setSectionChats((prev) => ({
+            ...prev,
+            [section]: [...(prev[section] || []), { role: "status" as const, content: `Error: ${(err as Error).message}` }],
+          }));
+        },
+      },
+    );
+  }, [articleId, sectionInputs, refineSection]);
+
+  const handleSectionKeyDown = useCallback(
+    (section: ShowNotesSection) => (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSectionRefine(section);
+      }
+    },
+    [handleSectionRefine],
+  );
+
+  const isDraftPending = generateDraft.isPending || refineDraft.isPending;
   const hasDraft = !!article.notes_draft;
 
   return (
@@ -165,41 +230,6 @@ export default function ShowNotesTabs({ articleId, article, onSaveSection, onSav
       {/* Tab panels — all mounted, hidden via CSS to preserve TipTap undo history */}
       {TABS.map((tab) => (
         <div key={tab.key} className={activeTab === tab.key ? "" : "hidden"}>
-          {/* Draft tab: generate prompt BEFORE editor when no draft exists */}
-          {tab.key === "notes_draft" && !hasDraft && (
-            <div className="mb-2 space-y-2">
-              <textarea
-                value={draftContext}
-                onChange={(e) => setDraftContext(e.target.value)}
-                rows={2}
-                className="w-full text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
-                placeholder="Optional: guide the take — e.g. 'focus on the developer experience angle' or 'we think this is overhyped, be skeptical'"
-                disabled={isPending}
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleGenerate}
-                  disabled={isPending}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {generateDraft.isPending ? (
-                    <>
-                      <Spinner />
-                      Generating...
-                    </>
-                  ) : (
-                    "Generate Draft"
-                  )}
-                </button>
-                {generateDraft.isError && (
-                  <span className="text-xs text-red-500">
-                    {(generateDraft.error as Error).message}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Editor */}
           {isCollaborative ? (
             <CollaborativeEditor
@@ -209,10 +239,10 @@ export default function ShowNotesTabs({ articleId, article, onSaveSection, onSav
               onSavedStateChange={onSavedStateChange}
               placeholder={
                 tab.key === "notes_draft"
-                  ? "Click 'Generate Draft' to create a script segment from your show notes..."
+                  ? "Draft will be generated automatically with show notes..."
                   : `${tab.label} will appear here after processing...`
               }
-              className="bg-gray-50 dark:bg-gray-800"
+              className="bg-white dark:bg-gray-950"
             />
           ) : (
             <RichEditor
@@ -221,88 +251,135 @@ export default function ShowNotesTabs({ articleId, article, onSaveSection, onSav
               onSavedStateChange={onSavedStateChange}
               placeholder={
                 tab.key === "notes_draft"
-                  ? "Click 'Generate Draft' to create a script segment from your show notes..."
+                  ? "Draft will be generated automatically with show notes..."
                   : `${tab.label} will appear here after processing...`
               }
-              className="bg-gray-50 dark:bg-gray-800"
+              className="bg-white dark:bg-gray-950"
             />
           )}
 
-          {/* Draft tab: speaking time + chat refinement UI AFTER editor */}
-          {tab.key === "notes_draft" && (
-            <>
-              {/* Speaking time */}
-              {(() => {
-                const duration = speakingTime(article.notes_draft);
-                return duration ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{duration}</p>
-                ) : null;
-              })()}
-
-              {/* Chat history + refinement input (only when draft exists) */}
-              {hasDraft && (
-                <div className="mt-3 space-y-2">
-                  {/* Chat history */}
-                  {chatHistory.length > 0 && (
-                    <div className="max-h-32 overflow-y-auto space-y-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-gray-50 dark:bg-gray-800/50">
-                      {chatHistory.map((entry, i) => (
-                        <div key={i} className={entry.role === "user" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500 italic"}>
-                          {entry.role === "user" ? (
-                            <span><span className="font-medium text-indigo-600 dark:text-indigo-400">You:</span> {entry.content}</span>
-                          ) : (
-                            <span>{entry.content}</span>
-                          )}
-                        </div>
-                      ))}
-                      <div ref={chatEndRef} />
-                    </div>
-                  )}
-
-                  {/* Refinement input */}
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={refineInput}
-                      onChange={(e) => setRefineInput(e.target.value)}
-                      onKeyDown={handleRefineKeyDown}
-                      disabled={isPending}
-                      className="flex-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                      placeholder="Refine: e.g. 'make the opening more dramatic' or 'change the sports reference to pop culture'"
-                    />
-                    <button
-                      onClick={handleRefine}
-                      disabled={isPending || !refineInput.trim()}
-                      className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-                    >
-                      {refineDraft.isPending ? (
-                        <>
-                          <Spinner />
-                          Sending...
-                        </>
+          {/* Show notes section refinement UI */}
+          {REFINABLE_SECTIONS.has(tab.key) && !!article[tab.key] && (
+            <div className="mt-3 space-y-2">
+              {/* Chat history */}
+              {(sectionChats[tab.key]?.length ?? 0) > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-gray-50 dark:bg-gray-800/50">
+                  {sectionChats[tab.key].map((entry, i) => (
+                    <div key={i} className={entry.role === "user" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500 italic"}>
+                      {entry.role === "user" ? (
+                        <span><span className="font-medium text-indigo-600 dark:text-indigo-400">You:</span> {entry.content}</span>
                       ) : (
-                        "Send"
+                        <span>{entry.content}</span>
                       )}
-                    </button>
-                  </div>
-
-                  {/* Regenerate from scratch link */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleRegenerate}
-                      disabled={isPending}
-                      className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Regenerate from scratch
-                    </button>
-                    {(generateDraft.isError || refineDraft.isError) && (
-                      <span className="text-xs text-red-500">
-                        {((generateDraft.error || refineDraft.error) as Error)?.message}
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  ))}
+                  <div ref={(el) => { sectionChatEndRefs.current[tab.key] = el; }} />
                 </div>
               )}
-            </>
+
+              {/* Refinement input */}
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={sectionInputs[tab.key] || ""}
+                  onChange={(e) => setSectionInputs((prev) => ({ ...prev, [tab.key]: e.target.value }))}
+                  onKeyDown={handleSectionKeyDown(tab.key)}
+                  disabled={refineSection.isPending}
+                  className="flex-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                  placeholder={`Refine ${tab.label.toLowerCase()}...`}
+                />
+                <button
+                  onClick={() => handleSectionRefine(tab.key)}
+                  disabled={refineSection.isPending || !(sectionInputs[tab.key] || "").trim()}
+                  className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                >
+                  {refineSection.isPending ? (
+                    <>
+                      <Spinner />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send"
+                  )}
+                </button>
+              </div>
+
+              {refineSection.isError && (
+                <span className="text-xs text-red-500">
+                  {(refineSection.error as Error)?.message}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Draft tab: chat refinement UI AFTER editor */}
+          {tab.key === "notes_draft" && hasDraft && (
+            <div className="mt-3 space-y-2">
+              {/* Chat history */}
+              {draftChat.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-gray-50 dark:bg-gray-800/50">
+                  {draftChat.map((entry, i) => (
+                    <div key={i} className={entry.role === "user" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500 italic"}>
+                      {entry.role === "user" ? (
+                        <span><span className="font-medium text-indigo-600 dark:text-indigo-400">You:</span> {entry.content}</span>
+                      ) : (
+                        <span>{entry.content}</span>
+                      )}
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+              )}
+
+              {/* Refinement input */}
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={draftInput}
+                  onChange={(e) => setDraftInput(e.target.value)}
+                  onKeyDown={handleDraftKeyDown}
+                  disabled={isDraftPending}
+                  className="flex-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                  placeholder="Refine: e.g. 'make the opening more dramatic' or 'change the sports reference to pop culture'"
+                />
+                <button
+                  onClick={handleDraftRefine}
+                  disabled={isDraftPending || !draftInput.trim()}
+                  className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                >
+                  {refineDraft.isPending ? (
+                    <>
+                      <Spinner />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send"
+                  )}
+                </button>
+              </div>
+
+              {/* Regenerate link + speaking time */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRegenerate}
+                  disabled={isDraftPending}
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Regenerate from scratch
+                </button>
+                {(() => {
+                  const duration = speakingTime(article.notes_draft);
+                  return duration ? (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{duration}</span>
+                  ) : null;
+                })()}
+                {(generateDraft.isError || refineDraft.isError) && (
+                  <span className="text-xs text-red-500">
+                    {((generateDraft.error || refineDraft.error) as Error)?.message}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </div>
       ))}

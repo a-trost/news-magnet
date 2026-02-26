@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { splitMarkdownSections, isBlockPage } from "./show-prep";
 
 describe("splitMarkdownSections", () => {
-  it("splits all 4 sections correctly", () => {
+  it("splits all 5 sections correctly", () => {
     const md = `## Summary
 This is the summary.
 
@@ -13,6 +13,10 @@ This matters because...
 - Joke 1
 - Joke 2
 
+## Skit Ideas
+- A sketch where a developer tries to explain microservices to their grandma
+- Ryan George style: "So you're telling me we need 47 config files?"
+
 ## Talking Points
 - Point 1
 - Point 2`;
@@ -20,6 +24,7 @@ This matters because...
     expect(result.notes_summary).toContain("This is the summary.");
     expect(result.notes_why).toContain("This matters because...");
     expect(result.notes_comedy).toContain("Joke 1");
+    expect(result.notes_skit).toContain("explain microservices");
     expect(result.notes_talking).toContain("Point 1");
   });
 
@@ -30,6 +35,7 @@ Just a summary.`;
     expect(result.notes_summary).toContain("Just a summary.");
     expect(result.notes_why).toBe("");
     expect(result.notes_comedy).toBe("");
+    expect(result.notes_skit).toBe("");
     expect(result.notes_talking).toBe("");
   });
 
@@ -63,6 +69,7 @@ lower case why.`;
     expect(result.notes_summary).toBe("");
     expect(result.notes_why).toBe("");
     expect(result.notes_comedy).toBe("");
+    expect(result.notes_skit).toBe("");
     expect(result.notes_talking).toBe("");
   });
 

@@ -5,9 +5,9 @@ import {
   useUpdateSource,
   useDeleteSource,
   useFetchSource,
-  useFetchAllStream,
 } from "../api/hooks";
 import type { SourceFetchStatus } from "../api/hooks";
+import { useFetchAll } from "../components/FetchAllContext";
 import type { SourceType, SourceConfig } from "@shared/types";
 
 const SOURCE_TYPES: { value: SourceType; label: string }[] = [
@@ -193,7 +193,7 @@ export default function SourcesPage() {
   const updateSource = useUpdateSource();
   const deleteSource = useDeleteSource();
   const fetchSource = useFetchSource();
-  const fetchAll = useFetchAllStream();
+  const fetchAll = useFetchAll();
 
   return (
     <div>

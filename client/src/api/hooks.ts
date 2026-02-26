@@ -234,63 +234,6 @@ export type SourceFetchStatus = {
   error?: string;
 };
 
-export function useFetchAllStream() {
-  const qc = useQueryClient();
-  const [isPending, setIsPending] = useState(false);
-  const [isFiltering, setIsFiltering] = useState(false);
-  const [filterErrors, setFilterErrors] = useState<string[]>([]);
-  const [sourceStatuses, setSourceStatuses] = useState<Map<number, SourceFetchStatus>>(new Map());
-
-  const mutate = useCallback(async () => {
-    setIsPending(true);
-    setIsFiltering(false);
-    setFilterErrors([]);
-    setSourceStatuses(new Map());
-
-    try {
-      for await (const event of streamPost("/fetch")) {
-        if (event.event === "source-start") {
-          const { sourceId, sourceName } = event.data;
-          setSourceStatuses((prev) => {
-            const next = new Map(prev);
-            next.set(sourceId, { sourceId, sourceName, status: "fetching" });
-            return next;
-          });
-        } else if (event.event === "source-done") {
-          const { sourceId, sourceName, status, articlesFound, newArticles, error } = event.data;
-          setSourceStatuses((prev) => {
-            const next = new Map(prev);
-            next.set(sourceId, { sourceId, sourceName, status, articlesFound, newArticles, error });
-            return next;
-          });
-          qc.invalidateQueries({ queryKey: ["articles"] });
-        } else if (event.event === "fetch-complete") {
-          qc.invalidateQueries({ queryKey: ["sources"] });
-          qc.invalidateQueries({ queryKey: ["fetchLogs"] });
-        } else if (event.event === "filter-start") {
-          setIsFiltering(true);
-        } else if (event.event === "filter-done") {
-          setIsFiltering(false);
-          const { errors } = event.data;
-          if (errors?.length) {
-            setFilterErrors(errors);
-          }
-          qc.invalidateQueries({ queryKey: ["articles"] });
-        }
-      }
-    } catch (err: any) {
-      console.error("Fetch-all stream error:", err);
-      setFilterErrors([err.message || "Stream connection failed"]);
-    } finally {
-      setIsPending(false);
-      setIsFiltering(false);
-    }
-  }, [qc]);
-
-  const dismissFilterErrors = useCallback(() => setFilterErrors([]), []);
-
-  return { mutate, isPending, isFiltering, filterErrors, dismissFilterErrors, sourceStatuses };
-}
 
 export function useFetchSource() {
   const qc = useQueryClient();
@@ -340,7 +283,7 @@ export function useUpdateSetting() {
 }
 
 // Show Prep
-export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_talking" | "notes_draft";
+export type ShowNotesSection = "notes_summary" | "notes_why" | "notes_comedy" | "notes_skit" | "notes_talking" | "notes_draft";
 
 export type ArticleProcessStatus = {
   id: number;
@@ -432,6 +375,32 @@ export function useRefineDraft() {
   return useMutation({
     mutationFn: ({ id, instruction, currentDraft }: { id: number; instruction: string; currentDraft: string }) =>
       api.post<{ notes_draft: string }>(`/articles/${id}/refine-draft`, { instruction, currentDraft }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useRefineSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, section, instruction, currentContent }: { id: number; section: ShowNotesSection; instruction: string; currentContent: string }) =>
+      api.post<{ section: ShowNotesSection; content: string }>(`/articles/${id}/refine-section`, { section, instruction, currentContent }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useRefineScript() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, instruction, currentScript }: { id: number; instruction: string; currentScript: string }) =>
+      api.post<{ script: string }>(`/articles/${id}/refine-script`, { instruction, currentScript }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
+  });
+}
+
+export function useCancelProcessing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post(`/articles/${id}/cancel-processing`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["articles"] }),
   });
 }

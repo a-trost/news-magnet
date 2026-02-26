@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import * as articlesRepo from "../db/repositories/articles";
 import { getActiveEpisodes, addArticleToEpisode } from "../db/repositories/episodes";
-import { processArticleForShow, generateDraftSegment, refineDraftSegment } from "../llm/show-prep";
+import { processArticleForShow, generateDraftSegment, refineDraftSegment, refineShowNotesSection, refineScript } from "../llm/show-prep";
 import { getSettingValue } from "../db/repositories/settings";
 import { fetchArticleMetadata } from "../fetchers/metadata";
 import type { ArticleFilters } from "@shared/types";
@@ -74,6 +74,7 @@ articlesRouter.post("/process", async (c) => {
       data: JSON.stringify({ total: articles.length }),
     });
 
+    const voicePrompt = getSettingValue("voice_prompt") || "";
     let processed = 0;
     for (const article of articles) {
       await stream.writeSSE({
@@ -82,7 +83,7 @@ articlesRouter.post("/process", async (c) => {
       });
 
       try {
-        const sections = await processArticleForShow(article);
+        const sections = await processArticleForShow(article, voicePrompt);
         articlesRepo.updateShowNotes(article.id, sections);
         processed++;
         await stream.writeSSE({
@@ -116,12 +117,17 @@ articlesRouter.post("/:id/save", (c) => {
     addArticleToEpisode(id, activeEpisodes[0].id);
   }
 
-  // Fire-and-forget: process show notes in the background
+  // Fire-and-forget: process show notes + draft in the background
   const article = articlesRepo.getArticleById(id);
   if (article && !article.processed_at) {
-    processArticleForShow(article)
+    const voicePrompt = getSettingValue("voice_prompt") || "";
+    processArticleForShow(article, voicePrompt)
       .then((sections) => articlesRepo.updateShowNotes(id, sections))
-      .catch((err) => console.error(`Auto-process failed for article ${id}:`, err));
+      .catch((err) => {
+        console.error(`Auto-process failed for article ${id}:`, err);
+        // Mark as processed so the UI spinner stops — user can retry via reprocess
+        articlesRepo.markProcessed(id);
+      });
   }
 
   return c.json({ data: { success: true } });
@@ -193,6 +199,67 @@ articlesRouter.post("/:id/refine-draft", async (c) => {
   }
 });
 
+const SECTION_LABELS: Record<string, string> = {
+  notes_summary: "Summary",
+  notes_why: "Why It Matters",
+  notes_comedy: "Comedy Angles",
+  notes_skit: "Skit Ideas",
+  notes_talking: "Talking Points",
+};
+
+articlesRouter.post("/:id/refine-section", async (c) => {
+  const id = Number(c.req.param("id"));
+  const article = articlesRepo.getArticleById(id);
+  if (!article) return c.json({ error: "Article not found" }, 404);
+
+  const { section, instruction, currentContent } = await c.req.json<{
+    section: ShowNotesSection;
+    instruction: string;
+    currentContent: string;
+  }>();
+
+  const label = SECTION_LABELS[section];
+  if (!label) return c.json({ error: `Invalid section: ${section}` }, 400);
+  if (!instruction?.trim()) return c.json({ error: "Instruction is required" }, 400);
+  if (!currentContent?.trim()) return c.json({ error: "Current content is required" }, 400);
+
+  try {
+    const html = await refineShowNotesSection(article, currentContent, instruction.trim(), label);
+    articlesRepo.updateShowNotesSection(id, section, html);
+    return c.json({ data: { section, content: html } });
+  } catch (err: any) {
+    return c.json({ error: `Section refinement failed: ${err.message}` }, 500);
+  }
+});
+
+articlesRouter.post("/:id/refine-script", async (c) => {
+  const id = Number(c.req.param("id"));
+  const article = articlesRepo.getArticleById(id);
+  if (!article) return c.json({ error: "Article not found" }, 404);
+  if (!article.script) return c.json({ error: "No script to refine" }, 400);
+
+  const { instruction, currentScript } = await c.req.json<{ instruction: string; currentScript: string }>();
+  if (!instruction?.trim()) return c.json({ error: "Instruction is required" }, 400);
+  if (!currentScript?.trim()) return c.json({ error: "Current script is required" }, 400);
+
+  try {
+    const voicePrompt = getSettingValue("voice_prompt") || "";
+    const html = await refineScript(currentScript, instruction.trim(), voicePrompt);
+    articlesRepo.updateScript(id, html);
+    return c.json({ data: { script: html } });
+  } catch (err: any) {
+    return c.json({ error: `Script refinement failed: ${err.message}` }, 500);
+  }
+});
+
+articlesRouter.post("/:id/cancel-processing", (c) => {
+  const id = Number(c.req.param("id"));
+  const article = articlesRepo.getArticleById(id);
+  if (!article) return c.json({ error: "Article not found" }, 404);
+  articlesRepo.markProcessed(id);
+  return c.json({ data: { success: true } });
+});
+
 articlesRouter.post("/:id/reprocess", async (c) => {
   const id = Number(c.req.param("id"));
   const article = articlesRepo.getArticleById(id);
@@ -200,7 +267,8 @@ articlesRouter.post("/:id/reprocess", async (c) => {
 
   articlesRepo.clearShowNotes(id);
   try {
-    const sections = await processArticleForShow(article);
+    const voicePrompt = getSettingValue("voice_prompt") || "";
+    const sections = await processArticleForShow(article, voicePrompt);
     articlesRepo.updateShowNotes(id, sections);
     return c.json({ data: { sections } });
   } catch (err: any) {

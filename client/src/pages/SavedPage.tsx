@@ -37,6 +37,7 @@ import type { ShowNotesSection } from "../api/hooks";
 import RichEditor from "../components/RichEditor";
 import CollaborativeEditor from "../components/CollaborativeEditor";
 import ShowNotesTabs from "../components/ShowNotesTabs";
+import ScriptEditor from "../components/ScriptEditor";
 import { useCollaboration } from "../components/CollaborationContext";
 import ActiveUsers from "../components/ActiveUsers";
 import ArticlePresenceIndicator from "../components/ArticlePresenceIndicator";
@@ -130,7 +131,7 @@ function ArticleEditorAreaInner({
               {!notesSaved && (
                 <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
               )}
-              {article.notes_summary && !isProcessing && !isReprocessing && (
+              {!isProcessing && !isReprocessing && (
                 <button
                   onClick={onReprocess}
                   className="text-gray-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
@@ -145,11 +146,18 @@ function ArticleEditorAreaInner({
           </div>
           {isProcessing || isReprocessing ? (
             <div className="flex items-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-500">
-              <svg className="animate-spin h-4 w-4 text-indigo-500 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
               Processing with AI...
+              <button
+                onClick={onReprocess}
+                className="ml-1 text-xs text-gray-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                title="Retry processing"
+              >
+                Retry
+              </button>
             </div>
           ) : (
             <ShowNotesTabs
@@ -180,24 +188,13 @@ function ArticleEditorAreaInner({
               <span className="text-xs text-amber-500 dark:text-amber-400">Unsaved</span>
             )}
           </div>
-          {isCollaborative ? (
-            <CollaborativeEditor
-              field="script"
-              initialContent={article.script || ""}
-              onSave={handleSaveScript}
-              onSavedStateChange={setScriptSaved}
-              placeholder="Write your script here..."
-              className="bg-gray-50 dark:bg-gray-800 flex-1"
-            />
-          ) : (
-            <RichEditor
-              content={article.script || ""}
-              onSave={handleSaveScript}
-              onSavedStateChange={setScriptSaved}
-              placeholder="Write your script here..."
-              className="bg-gray-50 dark:bg-gray-800 flex-1"
-            />
-          )}
+          <ScriptEditor
+            articleId={article.id}
+            script={article.script}
+            onSave={handleSaveScript}
+            onSavedStateChange={setScriptSaved}
+            isCollaborative={isCollaborative}
+          />
         </div>
       </div>
     </div>
@@ -550,14 +547,14 @@ function EpisodeHeader({
               initialContent={episode.notes || ""}
               onSave={handleNotesSave}
               placeholder="Episode notes..."
-              className="bg-gray-50 dark:bg-gray-800"
+              className="bg-white dark:bg-gray-950"
             />
           ) : (
             <RichEditor
               content={episode.notes || ""}
               onSave={handleNotesSave}
               placeholder="Episode notes..."
-              className="bg-gray-50 dark:bg-gray-800"
+              className="bg-white dark:bg-gray-950"
             />
           )}
         </div>

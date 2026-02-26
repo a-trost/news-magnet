@@ -4,11 +4,11 @@ import {
   useDeleteArticle,
   useSaveArticle,
   useUnsaveArticle,
-  useFetchAllStream,
   useClearUnsavedArticles,
   useAddArticleByUrl,
   useSources,
 } from "../api/hooks";
+import { useFetchAll } from "../components/FetchAllContext";
 import type { ArticleFilters } from "@shared/types";
 
 function ScoreBadge({ score }: { score: number | null }) {
@@ -96,7 +96,7 @@ export default function ArticlesPage() {
 
   const { data, isLoading } = useArticles(filters);
   const { data: sources } = useSources();
-  const fetchAll = useFetchAllStream();
+  const fetchAll = useFetchAll();
   const deleteArticle = useDeleteArticle();
   const clearUnsaved = useClearUnsavedArticles();
   const saveArticle = useSaveArticle();
